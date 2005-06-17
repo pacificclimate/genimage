@@ -1,0 +1,6 @@
+#!/bin/bash
+
+CXXFLAGS="-march=pentium3 -s -O3 -funroll-loops"
+#CXXFLAGS="-g3 -Wall"
+
+g++ $CXXFLAGS -o genimage support.cc line.cc point.cc genimage.cc legend.cc /usr/local/lib/libgd.a /usr/local/lib/libfreetype.a /usr/lib/libpng12.a /usr/lib/libjpeg.a /usr/lib/libz.a
