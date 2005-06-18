@@ -318,7 +318,7 @@ int main(int argc, char ** argv) {
   lat_height = map_height + LAT_EXTRA_HEIGHT;
 
   // Special case of TYPE_ALL plot (integrates 3 images into 1)
-  if(plot_type == TYPE_ALL || plot_type == TYPE_TEXT) {
+  if(plot_type == TYPE_ALL || plot_type == TYPE_REGIONONLY || plot_type == TYPE_TEXT) {
     img_width = leg_width;
     img_height = leg_height + map_height;
     map_offset_x = lat_width;
@@ -609,8 +609,7 @@ int main(int argc, char ** argv) {
   
   if(plot_type == TYPE_MAP || plot_type == TYPE_ALL || plot_type == TYPE_REGIONONLY) {
     if(plot_type == TYPE_REGIONONLY) {
-      img = gdImageCreateTrueColor(map_width, map_height);
-      gdImageCopy(img, image2, 0, 0, 0, 0, image2->sx, image2->sy);
+      gdImageCopy(img, image2, map_offset_x + 1, map_offset_y + 1, 0, 0, image2->sx, image2->sy);
       imgptr = img->tpixels;
     }
     // After we're done with the map, we put the grid on it
@@ -686,7 +685,7 @@ int main(int argc, char ** argv) {
     }
   }
 
-  if(plot_type == TYPE_LEGEND || plot_type == TYPE_ALL) {
+  if(plot_type == TYPE_LEGEND || plot_type == TYPE_ALL || plot_type == TYPE_REGIONONLY) {
     if(plot_type == TYPE_LEGEND) {
       img = gdImageCreateTrueColor(leg_width, leg_height);
     }
@@ -707,35 +706,83 @@ int main(int argc, char ** argv) {
     leg_bottom = leg_height - LEG_BOTTOM_TEXT_HEIGHT + leg_offset_y;
 
     width = leg_right - leg_left;
-    i = leg_colours->numcolours();
-    
-    factor = (double)width / (double)i;
-  
-    // White out the white areas
-    gdImageFilledRectangle(img, 0 + leg_offset_x, 0 + leg_offset_y, leg_width + leg_offset_x, leg_top - 2, 0x00FFFFFF);
-    gdImageFilledRectangle(img, 0 + leg_offset_x, leg_top - 2, leg_left - 2, leg_bottom + 2, 0x00FFFFFF);
-    gdImageFilledRectangle(img, leg_right + 2, leg_top - 2, leg_width, leg_bottom + 2, 0x00FFFFFF);
-    gdImageFilledRectangle(img, 0 + leg_offset_x, leg_bottom + 2, leg_width + leg_offset_x, leg_height + leg_offset_y, 0x00FFFFFF);
 
-    // Draw the surrounding box
-    gdImageLine(img, leg_left - 1, leg_top - 1, leg_right + 1, leg_top - 1, 0x00000000);
-    gdImageLine(img, leg_right + 1, leg_top - 1, leg_right + 1, leg_bottom + 1, 0x00000000);
-    gdImageLine(img, leg_right + 1, leg_bottom + 1, leg_left - 1, leg_bottom + 1, 0x00000000);
-    gdImageLine(img, leg_left - 1, leg_bottom + 1, leg_left - 1, leg_top - 1, 0x00000000);
-    
-    // Legend text
-    // Get ready to render text
-    colour = 0x00000000;
-    x = leg_left + width / 2;
-    y = leg_offset_y + leg_height;
-    gdImageStringFT(NULL, brect, colour, font, 12, 0, x, y, leg_text);
+    if(plot_type == TYPE_REGIONONLY) {
+      gdImageFilledRectangle(img, 0 + leg_offset_x, 0 + leg_offset_y, leg_width + leg_offset_x, leg_height + leg_offset_y, 0x00FFFFFF);
+    } else {
+      i = leg_colours->numcolours();
+      
+      factor = (double)width / (double)i;
+      
+      // White out the white areas
+      gdImageFilledRectangle(img, 0 + leg_offset_x, 0 + leg_offset_y, leg_width + leg_offset_x, leg_top - 2, 0x00FFFFFF);
+      gdImageFilledRectangle(img, 0 + leg_offset_x, leg_top - 2, leg_left - 2, leg_bottom + 2, 0x00FFFFFF);
+      gdImageFilledRectangle(img, leg_right + 2, leg_top - 2, leg_width, leg_bottom + 2, 0x00FFFFFF);
+      gdImageFilledRectangle(img, 0 + leg_offset_x, leg_bottom + 2, leg_width + leg_offset_x, leg_height + leg_offset_y, 0x00FFFFFF);
+      
+      // Draw the surrounding box
+      gdImageLine(img, leg_left - 1, leg_top - 1, leg_right + 1, leg_top - 1, 0x00000000);
+      gdImageLine(img, leg_right + 1, leg_top - 1, leg_right + 1, leg_bottom + 1, 0x00000000);
+      gdImageLine(img, leg_right + 1, leg_bottom + 1, leg_left - 1, leg_bottom + 1, 0x00000000);
+      gdImageLine(img, leg_left - 1, leg_bottom + 1, leg_left - 1, leg_top - 1, 0x00000000);
 
-    // Center the text horizontally and align it upwards vertically
-    x -= (brect[2] - brect[0]) >> 1;
-    y -= (brect[3] - (leg_offset_y + leg_height)) + 15;
-
-    // Render
-    gdImageStringFT(img, brect, colour, font, 12, 0, x, y, leg_text);
+      // Legend text
+      // Get ready to render text
+      colour = 0x00000000;
+      x = leg_left + width / 2;
+      y = leg_offset_y + leg_height;
+      gdImageStringFT(NULL, brect, colour, font, 12, 0, x, y, leg_text);
+      
+      // Center the text horizontally and align it upwards vertically
+      x -= (brect[2] - brect[0]) >> 1;
+      y -= (brect[3] - (leg_offset_y + leg_height)) + 15;
+      
+      // Render
+      gdImageStringFT(img, brect, colour, font, 12, 0, x, y, leg_text);
+      
+      // Draw the legend
+      for(i = leg_colours->numcolours() - 1; (i + 1); i--) {
+	colour = leg_colours->lookup(i);
+	gdImageFilledRectangle(img, (int)round(i * factor) + leg_left, leg_top, (int)round((i + 1) * factor) + leg_left, leg_bottom, colour);
+      }
+      
+      // Draw on the legend and give it text
+      if(range_dynamic) {
+	lbl_offset = 0;
+	factor = (double)(width) / (num_leg_segments);
+      } else {
+	lbl_offset = factor;
+	factor = (double)(width - (2 * lbl_offset)) / num_leg_segments;
+      } 
+      
+      // Create the tick marks in the legend
+      colour = 0x00000000;
+      for(i = 0; i <= num_leg_segments; i++) {
+	x = leg_left + (int)round(i * factor + lbl_offset);
+	gdImageLine(img, x, leg_top, x, leg_top + 4, colour);
+	gdImageLine(img, x, leg_bottom - 4, x, leg_bottom, colour);
+      }
+      
+      // Label the ticks
+      temp2 = ((leg_range_max - leg_range_min) / num_leg_segments);
+      for(i = 0;i <= num_leg_segments; i++) {
+	x = leg_left + (int)round(i * factor + lbl_offset);
+	y = leg_bottom;
+	temp = temp2 * i + leg_range_min;
+	
+	sprintf(buf2, "%%.%if", leg_dec_places);
+	sprintf(buf, buf2, temp);
+	
+	gdImageStringFT(NULL, brect, colour, font, 10, 0, x, y, buf);
+	
+	// Center the text horizontally and align it downwards vertically
+	x -= (brect[2] - brect[0]) >> 1;
+	y += (leg_bottom - brect[5]) + 5;
+	
+	// Render
+	gdImageStringFT(img, brect, colour, font, 10, 0, x, y, buf);
+      }
+    }
 
     // Credit text
     // Get ready to render text
@@ -743,13 +790,13 @@ int main(int argc, char ** argv) {
     x = leg_offset_x + leg_width;
     y = leg_offset_y + leg_height;
     gdImageStringFT(NULL, brect, colour, font, 10, 0, x, y, credit_text);
-
+    
     // Align text right and up
     x -= (brect[2] - (leg_offset_x + leg_width));
     y -= (brect[3] - (leg_offset_y + leg_height));
-
+    
     fprintf(stderr, "x: %i, y: %i\n", x, y);
-
+    
     // Render
     gdImageStringFT(img, brect, colour, font, 10, 0, x, y, credit_text);
     
@@ -759,62 +806,19 @@ int main(int argc, char ** argv) {
     x = leg_offset_x;
     y = leg_offset_y + leg_height;
     gdImageStringFT(NULL, brect, colour, font, 8, 0, x, y, identify_text);
-
+    
     // Align text left and up
     x -= brect[0];
     y -= (brect[3] - (leg_offset_y + leg_height));
-
+    
     fprintf(stderr, "x: %i, y: %i\n", x, y);
-
+    
     // Render
     gdImageStringFT(img, brect, colour, font, 8, 0, x, y, identify_text);
     
-    // Draw the legend
-    for(i = leg_colours->numcolours() - 1; (i + 1); i--) {
-      colour = leg_colours->lookup(i);
-      gdImageFilledRectangle(img, (int)round(i * factor) + leg_left, leg_top, (int)round((i + 1) * factor) + leg_left, leg_bottom, colour);
-    }
-
-    // Draw on the legend and give it text
-    if(range_dynamic) {
-      lbl_offset = 0;
-      factor = (double)(width) / (num_leg_segments);
-    } else {
-      lbl_offset = factor;
-      factor = (double)(width - (2 * lbl_offset)) / num_leg_segments;
-    } 
-
-    // Create the tick marks in the legend
-    colour = 0x00000000;
-    for(i = 0; i <= num_leg_segments; i++) {
-      x = leg_left + (int)round(i * factor + lbl_offset);
-      gdImageLine(img, x, leg_top, x, leg_top + 4, colour);
-      gdImageLine(img, x, leg_bottom - 4, x, leg_bottom, colour);
-    }
-
-    // Label the ticks
-    temp2 = ((leg_range_max - leg_range_min) / num_leg_segments);
-    for(i = 0;i <= num_leg_segments; i++) {
-      x = leg_left + (int)round(i * factor + lbl_offset);
-      y = leg_bottom;
-      temp = temp2 * i + leg_range_min;
-      
-      sprintf(buf2, "%%.%if", leg_dec_places);
-      sprintf(buf, buf2, temp);
-      
-      gdImageStringFT(NULL, brect, colour, font, 10, 0, x, y, buf);
-      
-      // Center the text horizontally and align it downwards vertically
-      x -= (brect[2] - brect[0]) >> 1;
-      y += (leg_bottom - brect[5]) + 5;
-      
-      // Render
-      gdImageStringFT(img, brect, colour, font, 10, 0, x, y, buf);
-    }
-    
     // Lon grid
     factor = width / difflon;
-
+    
     j = lon_text_spacing;
     for(i = (int)floorf(maxlon / j) * j; i > minlon; i -= j) {
       x = leg_left + (int)round((i - minlon) * factor);
@@ -844,7 +848,7 @@ int main(int argc, char ** argv) {
     }
   }
 
-  if(plot_type == TYPE_LAT || plot_type == TYPE_ALL) {
+  if(plot_type == TYPE_LAT || plot_type == TYPE_ALL || plot_type == TYPE_REGIONONLY) {
     double factor;
     if(plot_type == TYPE_LAT) {
       img = gdImageCreateTrueColor(lat_width, lat_height);
