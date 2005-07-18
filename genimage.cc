@@ -782,6 +782,22 @@ int main(int argc, char ** argv) {
 	// Render
 	gdImageStringFT(img, brect, colour, font, 10, 0, x, y, buf);
       }
+
+      // Identify text
+      // Get ready to render text
+      colour = 0x00000000;
+      x = leg_offset_x;
+      y = leg_offset_y + leg_height;
+      gdImageStringFT(NULL, brect, colour, font, 8, 0, x, y, identify_text);
+      
+      // Align text left and up
+      x -= brect[0];
+      y -= (brect[3] - (leg_offset_y + leg_height));
+      
+      //fprintf(stderr, "x: %i, y: %i\n", x, y);
+      
+      // Render
+      gdImageStringFT(img, brect, colour, font, 8, 0, x, y, identify_text);
     }
 
     // Credit text
@@ -795,26 +811,10 @@ int main(int argc, char ** argv) {
     x -= (brect[2] - (leg_offset_x + leg_width));
     y -= (brect[3] - (leg_offset_y + leg_height));
     
-    fprintf(stderr, "x: %i, y: %i\n", x, y);
+    //fprintf(stderr, "x: %i, y: %i\n", x, y);
     
     // Render
     gdImageStringFT(img, brect, colour, font, 10, 0, x, y, credit_text);
-    
-    // Identify text
-    // Get ready to render text
-    colour = 0x00000000;
-    x = leg_offset_x;
-    y = leg_offset_y + leg_height;
-    gdImageStringFT(NULL, brect, colour, font, 8, 0, x, y, identify_text);
-    
-    // Align text left and up
-    x -= brect[0];
-    y -= (brect[3] - (leg_offset_y + leg_height));
-    
-    fprintf(stderr, "x: %i, y: %i\n", x, y);
-    
-    // Render
-    gdImageStringFT(img, brect, colour, font, 8, 0, x, y, identify_text);
     
     // Lon grid
     factor = width / difflon;
