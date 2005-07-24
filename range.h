@@ -1,3 +1,5 @@
+#include <math.h>
+
 #ifndef __GENIMAGE_RANGE_H
 #define __GENIMAGE_RANGE_H
 

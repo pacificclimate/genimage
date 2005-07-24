@@ -2,7 +2,6 @@
 #define __SUPPORT_H
 #include <iostream>
 #include <list>
-#include "point.h"
 #include "line.h"
 
 using namespace std;
@@ -15,7 +14,11 @@ void draw_triangle(int rows, int cols, float* grid, float* lats, float* lons, Po
 
 void draw_polygon(int rows, int cols, float* grid, float* lats, float* lons, Point<float> **points, int numlines);
 
-Point<float>* ls_intersect(const Line< Point<float> >& l1, const Line< Point<float> >& l2, bool ignore_first_range = false);
+Point<float>* 
+ls_intersect(
+const Line<Point<float> >& l1, 
+const Line<Point<float> >& l2, 
+bool ignore_first_range = false);
 
 Point<float>* ls_intersect(const Point<float>& p00, const Point<float>& p01, const Point<float>& p10, const Point<float>& p11, bool ignore_first_range = false);
 

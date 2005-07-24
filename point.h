@@ -1,6 +1,7 @@
 #ifndef __POINT_H
 #define __POINT_H
 #include <iostream>
+#include <math.h>
 
 #ifndef INFINITY
 #define INFINITY infinityf()
@@ -17,6 +18,15 @@ double clip_precision(double number, int num_mantissa_bits);
 int clip(int number);
 float clip(float number);
 double clip(double number);
+
+template <class T> class Point;
+
+template <class T>
+ostream& 
+operator<<(ostream& os, const Point<T>& f) {
+  os << "(" << f.x << "," << f.y << ")";
+  return os;
+}
 
 template <class T>
 class Point {
@@ -56,18 +66,10 @@ class Point {
   bool selected;
 };
 
-
 template <class T>
 Point<T> clip(const Point<T>& p) {
   Point<T> temp(clip(p.x), clip(p.y));;
   return temp;
-}
-
-template <class T>
-ostream& 
-operator<<(ostream& os, const Point<T>& f) {
-  os << "(" << f.x << "," << f.y << ")";
-  return os;
 }
 
 #endif

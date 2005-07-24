@@ -6,6 +6,15 @@
 
 using namespace std;
 
+template <class Q> class Line;
+
+template <class Q>
+ostream& 
+operator<<(ostream& os, const Line<Q>& l) {
+  os << "[" << l.from << " - " << l.to << "]";
+  return os;
+}
+
 template <class Q>
 class Line {
 public:
@@ -33,12 +42,5 @@ public:
     }
   }
 };
-
-template <class Q>
-ostream& 
-operator<<(ostream& os, const Line<Q>& l) {
-  os << "[" << l.from << " - " << l.to << "]";
-  return os;
-}
 
 #endif

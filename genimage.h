@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <getopt.h>
 #include <sys/file.h>
+#include <errno.h>
 using namespace std;
 
 #include "range.h"
