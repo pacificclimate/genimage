@@ -1,7 +1,7 @@
 #include "legend.h"
 #include "legends.h"
 
-legend::legend(float min, float max, int legend_no, int reversed) {
+legend::legend(double min, double max, int legend_no, int reversed) {
   this->min = min;
   this->max = max;
   if(legend_no == 0) {

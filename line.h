@@ -6,27 +6,26 @@
 
 using namespace std;
 
-template <class Q> class Line;
+class Line;
 
-template <class Q>
-ostream& 
-operator<<(ostream& os, const Line<Q>& l) {
-  os << "[" << l.from << " - " << l.to << "]";
-  return os;
-}
+Point* ls_intersect(const Line& l1, const Line& l2, bool ignore_first_range = false);
 
-template <class Q>
+Point* ls_intersect(const Point& p00, const Point& p01, const Point& p10, const Point& p11, bool ignore_first_range = false);
+
+// Returns list of points composing bounding box in clockwise order
+Line* get_box_outline(Point topright, Point bottomleft);
+
 class Line {
 public:
-  Q from, to;
+  Point from, to;
   int inside;
   float slope;
   bool used;
-  friend ostream& operator<< <> (ostream& os, const Line<Q>& f);
+  friend ostream& operator<< (ostream& os, const Line& f);
 
   Line() { used = false; };
 
-  Line(const Q& ifrom, const Q& ito, bool calc_slope = false, bool used = false) { 
+  Line(const Point& ifrom, const Point& ito, bool calc_slope = false, bool used = false) { 
     this->used = used;
     from.x = ifrom.x; 
     from.y = ifrom.y; 

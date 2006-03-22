@@ -41,14 +41,14 @@ using namespace std;
 
 enum PLOT_TYPES{ TYPE_MAP, TYPE_LEGEND, TYPE_LAT, TYPE_ALL, TYPE_TEXT, TYPE_MASK, TYPE_GEOREF, TYPE_PLOTINFO, TYPE_REGIONONLY, TYPE_INVALID };
 
-inline int lontox(int max_x, float off_lon, float min_lon, float max_lon, float lon) {
-  float difflon = max_lon - min_lon;
+inline int lontox(int max_x, double off_lon, double min_lon, double max_lon, double lon) {
+  double difflon = max_lon - min_lon;
 
   return (int)roundf(((lon - min_lon - off_lon) / difflon) * max_x);
 }
 
-inline int lattoy(int max_y, float off_lat, float min_lat, float max_lat, float lat) {
-  float difflat = max_lat - min_lat;
+inline int lattoy(int max_y, double off_lat, double min_lat, double max_lat, double lat) {
+  double difflat = max_lat - min_lat;
 
   return (int)roundf(max_y - (((lat - min_lat - off_lat) / difflat) * max_y));
 }
@@ -98,7 +98,7 @@ inline void seektonextline(FILE * in) {
   while('\n' != fgetc(in));
 }
 
-inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, float* data, int data_width) {
+inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width) {
   char* ptr;
   for(int y = 0; y < rows; y++) {
     if(fgets(dataline, dl_length, infile)) {
@@ -128,7 +128,7 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
   return 0;
 }
 
-inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, float* data, int data_width, struct range* drange) {
+inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width, struct range* drange) {
   char* ptr;
   for(int y = 0; y < rows; y++) {
     if(fgets(dataline, dl_length, infile)) {
@@ -144,7 +144,7 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
   return 0;
 }
 
-inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, float* data, int data_width, struct range* drange, int* slmask, int allow_value) {
+inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width, struct range* drange, int* slmask, int allow_value) {
   char* ptr;
   for(int y = 0; y < rows; y++) {
     if(fgets(dataline, dl_length, infile)) {
@@ -162,7 +162,7 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
   return 0;
 }
 
-inline int parse_data_point(char* datapt, Point<float>& pt) {
+inline int parse_data_point(char* datapt, Point& pt) {
   if(datapt && strchr(datapt, ':')) {
     char* nxt = strchr(datapt, ':');
     if(nxt && *nxt) {
@@ -190,8 +190,8 @@ inline int parse_data_point(char* datapt, Point<float>& pt) {
   return 1;
 }
 
-inline Point<float>* parse_data_point(char* datapt) {
-  Point<float>* dpoint = new Point<float>();
+inline Point* parse_data_point(char* datapt) {
+  Point* dpoint = new Point();
   if(parse_data_point(datapt, *dpoint)) {
     return dpoint;
   } else {

@@ -1,9 +1,10 @@
 #include "support.h"
+#include "line.h"
 
 enum CONN_STATES { UNDEF, USED, LINE, TEMP };
 
-bool sameside(const Point<float>& p1, const Point<float>& p2, const Line<Point<float> >& l) {
-  float crossproduct = (l.to - l.from).cross(p1 - l.from) * (l.to - l.from).cross(p2 - l.from);
+bool sameside(const Point& p1, const Point& p2, const Line& l) {
+  double crossproduct = (l.to - l.from).cross(p1 - l.from) * (l.to - l.from).cross(p2 - l.from);
   if(crossproduct >= 0) {
     return true;
   } else {
@@ -11,15 +12,11 @@ bool sameside(const Point<float>& p1, const Point<float>& p2, const Line<Point<f
   }
 }
 
-int sign(float number) {
-	  return (number >= -0) ? 1 : -1;
-}
-
 // Internal
 // Swaps things in the swap array if they're not ordered
 void swap_if_unordered(int* swap_array, 
-		       Point<float>* points[], 
-		       Point<float> from, 
+		       Point* points[], 
+		       Point from, 
 		       int to1, 
 		       int to2)
 {
@@ -36,7 +33,7 @@ void swap_if_unordered(int* swap_array,
 }
 
 // Returns true if above line, false otherwise
-bool right_of_line(const Point<float>& p, const Line<Point<float> >& l) {
+bool right_of_line(const Point& p, const Line& l) {
   if(l.slope == 0) {
     return (((l.to.x - l.from.x) * (l.from.y - p.y)) > 0);
   } else if(l.slope == INFINITY || l.slope == -INFINITY) {
@@ -47,124 +44,46 @@ bool right_of_line(const Point<float>& p, const Line<Point<float> >& l) {
 }
 
 // Assumes rectangle
-bool within_bbox(Point<float> p, Point<float> topright, Point<float> bottomleft) {
+bool within_bbox(Point p, Point topright, Point bottomleft) {
   return ((bottomleft.x < p.x) && (topright.x > p.x) && (bottomleft.y < p.y) && (topright.y > p.y));
 }
 
-// Returns list of points composing bounding box in clockwise order
-Line<Point<float> >* get_box_outline(Point<float> topright, Point<float> bottomleft) {
-  Line<Point<float> >* lines = new Line<Point<float> >[QUAD_SIDES];
-  
-  lines[0] = Line<Point<float> >(Point<float>(bottomleft.x, topright.y), Point<float>(topright.x, topright.y), true);
-  lines[1] = Line<Point<float> >(Point<float>(topright.x, topright.y), Point<float>(topright.x, bottomleft.y), true);
-  lines[2] = Line<Point<float> >(Point<float>(topright.x, bottomleft.y), Point<float>(bottomleft.x, bottomleft.y), true);
-  lines[3] = Line<Point<float> >(Point<float>(bottomleft.x, bottomleft.y), Point<float>(bottomleft.x, topright.y), true);
-  
-  return lines;
-}
-
-Point<float>* ls_intersect(const Line< Point<float> >& l1, const Line< Point<float> >& l2, bool ignore_first_range) {
-  return ls_intersect(l1.from, l1.to, l2.from, l2.to, ignore_first_range);
-}
-
-Point<float>* ls_intersect(const Point<float>& p00, const Point<float>& p01, const Point<float>& p10, const Point<float>& p11, bool ignore_first_range) {
-  float mA, mB, x, y, s, t;
-  int vlA = 0, vlB = 0;
-  Point<float>* point = 0;
-
-  // Check for vertical lines
-
-  if((p00.x - p01.x) == 0) {
-    // A is vertical line
-    vlA = 1;
-    mA = INFINITY;
-  } else {
-    mA = (p00.y - p01.y) / (p00.x - p01.x);
-  }
-
-  if((p10.x - p11.x) == 0) {
-    // B is vertical line
-    vlB = 1;
-    mB = INFINITY;
-  } else {
-    mB = (p10.y - p11.y) / (p10.x - p11.x);
-  }
-
-  //mA = clip(mA);
-  //mB = clip(mB);
-
-  // If parallel or antiparallel...
-  if(mA == mB) {
-    return 0;
-  }
-
-  if(vlA) {
-    //cout << "(" << p00.x << " - " << p11.x << ") = " << (p00.x - p11.x) << endl;
-
-    // Line A (p00 - p01) is a vertical line
-    x = p00.x;
-    y = ((p00.x - p11.x) * mB + p11.y);
-    s = ((y - p00.y) / (p01.y - p00.y));
-    t = ((x - p10.x) / (p11.x - p10.x));
-  } else if(vlB) {
-    // Line B (p10 - p11) is a vertical line
-    x = p10.x;
-    y = ((p10.x - p01.x) * mA + p01.y);
-    s = ((x - p00.x) / (p01.x - p00.x));
-    t = ((y - p10.y) / (p11.y - p10.y));
-  } else {
-    // Neither line is a vertical line
-    x = ( - mB * p10.x + p10.y + mA * p00.x - p00.y ) / ( mA - mB );
-    y = (mA * ( x - p00.x ) + p00.y);
-    s = ((x - p00.x) / (p01.x - p00.x));
-    t = ((x - p10.x) / (p11.x - p10.x));
-  }
-
-  // Check range
-  if((ignore_first_range || (s >= 0 && s <= 1)) && t >= 0 && t <= 1) {
-    point = new Point<float>(x, y);
-  }
-
-  // Return whatever we got, or 0 (NULL) if no intersect
-  return point;
-}
-
 // Assumes points come in in clockwise order - THIS IS REQUIRED
-void draw_triangle(int rows, int cols, float* grid, float* lats, float* lons, Point<float> p1, Point<float> p2, Point<float> p3) {
+void draw_triangle(int rows, int cols, double* grid, double* lats, double* lons, Point p1, Point p2, Point p3) {
   int i, j, k, l;
-  float maxlat = lats[0], minlat = lats[rows];
-  float maxlon = lons[cols], minlon = lons[0];
-  Point<float> topright, bottomleft;
+  double maxlat = lats[0], minlat = lats[rows];
+  double maxlon = lons[cols], minlon = lons[0];
+  Point topright, bottomleft;
 
   //cout << p1 << p2 << p3 << endl;
 
-  Line<Point<float> > line[] = { 
-    Line<Point<float> >(p1, p2, true), 
-    Line<Point<float> >(p2, p3, true), 
-    Line<Point<float> >(p3, p1, true)
+  Line line[] = { 
+    Line(p1, p2, true), 
+    Line(p2, p3, true), 
+    Line(p3, p1, true)
   };
 
-  int numlines = sizeof(line) / sizeof(Line<Point<float> >);
-  Point<float>* ipoints[numlines];
-  Line<Point<float> >* box;
+  int numlines = sizeof(line) / sizeof(Line);
+  Point* ipoints[numlines];
+  Line* box;
 
   for(i = 0; i < rows; i++) {
     // Reverse the lats -- arg. I want them to go min -> max
-    float tlat = lats[i];
-    float blat = lats[i + 1];
+    double tlat = lats[i];
+    double blat = lats[i + 1];
 
     //cout.setf(ios::fixed);
     //cout << tlat << "-" << blat << ": ";
 
 
     for(j = 0; j < cols; j++) {
-      float llon = lons[j];
-      float rlon = lons[j + 1];
-      topright = Point<float>(rlon, tlat);
-      bottomleft = Point<float>(llon, blat);
+      double llon = lons[j];
+      double rlon = lons[j + 1];
+      topright = Point(rlon, tlat);
+      bottomleft = Point(llon, blat);
 
-      list<Point<float> > outline;
-      list<Point<float> >::iterator ol_iter;
+      list<Point > outline;
+      list<Point >::iterator ol_iter;
 
       box = get_box_outline(topright, bottomleft);
       
@@ -209,7 +128,7 @@ void draw_triangle(int rows, int cols, float* grid, float* lats, float* lons, Po
 	  // Now we've supposedly generated the outline... get the area
 	  // Triangle fan approach
 	  ol_iter = outline.begin();
-	  Point<float> pivot, prev, cur;
+	  Point pivot, prev, cur;
 	  pivot = *ol_iter;
 	  
 	  ol_iter++;
@@ -240,13 +159,13 @@ void draw_triangle(int rows, int cols, float* grid, float* lats, float* lons, Po
   }
 }
 
-bool clockwise(int piv, int nxt, int prv, Point<float> **points, int numpoints) {
+bool clockwise(int piv, int nxt, int prv, Point **points, int numpoints) {
   return ((*(points[nxt]) - *(points[piv])).cross(*(points[piv]) - *(points[prv])) > 0);
 }
 
-bool line_crosses(int from, int to, Point<float> **points, int numlines) {
+bool line_crosses(int from, int to, Point **points, int numlines) {
   int nxt;
-  Point<float>* intersect;
+  Point* intersect;
   for(int i = 0; i < numlines; i++) {
     nxt = (i + 1) % numlines;
     // Make sure that the lines do not include endpoints
@@ -301,7 +220,7 @@ bool solve_connects(int idx, int points[], int connects[], int numpoints) {
   return solve_connects(idx, points, connects, numpoints, 0);
 }
 
-void remove_intercepts(int p1, int p2, Point<float>** points, int connects[], int numpoints) {
+void remove_intercepts(int p1, int p2, Point** points, int connects[], int numpoints) {
   // If temp line...
   if(connects[(p1 * numpoints) + p2] == TEMP) {
     for(int i = 0; i < numpoints; i++) {
@@ -315,7 +234,7 @@ void remove_intercepts(int p1, int p2, Point<float>** points, int connects[], in
 	
 	if(connects[(i * numpoints) + j] == TEMP) {
 	  // Do intersect checking
-	  Point<float> *intersect;
+	  Point *intersect;
 	  intersect = ls_intersect(*points[p1], *points[p2], *points[i], *points[j]);
 	  if(intersect) {
 	    connects[(i * numpoints) + j] = USED;
@@ -340,7 +259,7 @@ void dec(int p1, int p2, int connects[], int numpoints) {
 // Adaptation of algorithm found at:
 // http://www.ecse.rpi.edu/Homepages/wrf/research/geom/pnpoly.html
 // Copyright (c) 1970-2003, Wm. Randolph Franklin
-bool is_inside(Point<float> p, Point<float> **points, int numpoints) {
+bool is_inside(Point p, Point **points, int numpoints) {
   bool inside = false;
   int i, j;
   for(i = 0, j = numpoints - 1; i < numpoints; j = i++) {
@@ -354,7 +273,7 @@ bool is_inside(Point<float> p, Point<float> **points, int numpoints) {
 }
 
 // Assumes incoming shapes are POLYGONS -- NOT overlapping
-void draw_polygon(int rows, int cols, float* grid, float* lats, float* lons, Point<float>** points, int numpoints) {
+void draw_polygon(int rows, int cols, double* grid, double* lats, double* lons, Point** points, int numpoints) {
   int connects[numpoints * numpoints];
   int* conn;
   int i, j;
@@ -428,7 +347,7 @@ void draw_polygon(int rows, int cols, float* grid, float* lats, float* lons, Poi
 } // end draw_polygon
 
 // Replace with spherical tri area
-float triangle_area(Point<float> p1, Point<float> p2, Point<float> p3) {
+double triangle_area(Point p1, Point p2, Point p3) {
   double a, b, c;
 
   // Lengths of sides

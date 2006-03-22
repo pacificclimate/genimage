@@ -25,11 +25,11 @@ int main(int argc, char ** argv) {
   // --------------
   // Map data
   int img_width = -1, img_height = -1;
-  float offset_lon = 0, offset_lat = 0;
+  double offset_lon = 0, offset_lat = 0;
   int zoom_factor = 1;
   // --------------
   // Range data
-  float range_min = 0, range_max = 0;
+  double range_min = 0, range_max = 0;
   // --------------
   // Dec places for Legend data; and lat/lon data
   int dat_dec_places = 1, leg_dec_places = 1, lon_text_spacing = 20, lat_text_spacing = 10;
@@ -39,40 +39,40 @@ int main(int argc, char ** argv) {
   int timeofyear = 16, plot_type = 0;
   // --------------
   // List of points (relative to offset)
-  Point<float>* temp;
-  Point<float>** points;
-  list<Point<float>* > lpoints;
-  list<Point<float>* >::const_iterator lpoints_iter;
+  Point* temp;
+  Point** points;
+  list<Point* > lpoints;
+  list<Point* >::const_iterator lpoints_iter;
   
   FILE* infile, *infile2;
   
   // Point to get specific data about
   bool point_present = false;
-  Point<float> dpoint;
+  Point dpoint;
 
   int num_leg_blocks;
   int num_leg_segments;
-  float leg_range_min;
-  float leg_range_max;
+  double leg_range_min;
+  double leg_range_max;
   int colour;
   int i, j;
   int x, y;
-  //float xf, yf;
+  //double xf, yf;
   int xend, yend;
   int cols, rows;
   int dl_length, headerlen;
   int numpoints;
-  float maxlat, minlat;
-  float maxlon, minlon;
-  float difflat, difflon, diffrange;
-  float max_data, min_data;
+  double maxlat, minlat;
+  double maxlon, minlon;
+  double difflat, difflon, diffrange;
+  double max_data, min_data;
   
-  float* data;
-  float* lats;
-  float* lons;
-  float* grid_lats;
-  float* grid_lons;
-  float* r_grid;
+  double* data;
+  double* lats;
+  double* lons;
+  double* grid_lats;
+  double* grid_lons;
+  double* r_grid;
   int* xpoint;
   int* ypoint;
   
@@ -286,7 +286,7 @@ int main(int argc, char ** argv) {
   // Store up the data points
   numpoints = lpoints.size();
   if(numpoints) {
-    points = new Point<float>*[numpoints];
+    points = new Point*[numpoints];
     i = 0;
     for(lpoints_iter = lpoints.begin(); lpoints_iter != lpoints.end(); lpoints_iter++) {
       points[i] = (*lpoints_iter);
@@ -373,12 +373,12 @@ int main(int argc, char ** argv) {
   }
 
   // Now, set up the arrays
-  data = new float[rows * cols];
-  lats = new float[rows];
-  lons = new float[cols + 1];
-  grid_lats = new float[rows + 1];
-  grid_lons = new float[cols + 1];
-  r_grid = new float[rows * cols];
+  data = new double[rows * cols];
+  lats = new double[rows];
+  lons = new double[cols + 1];
+  grid_lats = new double[rows + 1];
+  grid_lons = new double[cols + 1];
+  r_grid = new double[rows * cols];
   draw_mask = new int[rows * cols];
   data_mask = new int[rows * cols];
   ypoint = new int[rows + 1];
@@ -460,13 +460,13 @@ int main(int argc, char ** argv) {
     leg_range_min = range_min;
     leg_colours->setmax(range_max);
     leg_colours->setmin(range_min);
-    range_max += diffrange / (float)(num_leg_blocks - 2);
-    range_min -= diffrange / (float)(num_leg_blocks - 2);
+    range_max += diffrange / (double)(num_leg_blocks - 2);
+    range_min -= diffrange / (double)(num_leg_blocks - 2);
   }
 
   // Auto set the legend's decimal places
   leg_dec_places = range_dynamic;
-  float tmp = (leg_range_max - leg_range_min) / (num_leg_segments);
+  double tmp = (leg_range_max - leg_range_min) / (num_leg_segments);
   while(tmp < 1) {
     leg_dec_places++;
     tmp *= 10;
@@ -521,7 +521,7 @@ int main(int argc, char ** argv) {
   ypoint[0] = yoffset;
   // Now generate the body
   for(y = 1; y < rows; y++) {
-    ypoint[y] = (int)(((maxlat - (lats[y] - ((lats[y] - lats[y - 1]) / 2))) / difflat) * (float)(map_height - BORDER_WIDTH*2) + 0.5) + yoffset;
+    ypoint[y] = (int)(((maxlat - (lats[y] - ((lats[y] - lats[y - 1]) / 2))) / difflat) * (double)(map_height - BORDER_WIDTH*2) + 0.5) + yoffset;
   }
   // Manually generate the bottom edge
   ypoint[rows] = map_height - (BORDER_WIDTH*2) + yoffset;
@@ -530,7 +530,7 @@ int main(int argc, char ** argv) {
   xpoint[0] = xoffset;
   // Now generate the body
   for(x = 1; x < cols; x++) {
-    xpoint[x] = (int)(((lons[x] - ((lons[x] - lons[x - 1]) / 2) - minlon) / difflon) * (float)(map_width - BORDER_WIDTH*2) + 0.5) + xoffset;
+    xpoint[x] = (int)(((lons[x] - ((lons[x] - lons[x - 1]) / 2) - minlon) / difflon) * (double)(map_width - BORDER_WIDTH*2) + 0.5) + xoffset;
   }
   // Manually generate the right edge
   xpoint[cols] = map_width - (BORDER_WIDTH*2) + xoffset;
@@ -545,7 +545,7 @@ int main(int argc, char ** argv) {
   // Need to allow most-covered grid box to be selected if no others available
   for(i = 0; i < rows; i++) {
     for(j = 0; j < cols; j++) {
-      float area = (grid_lats[i] - grid_lats[i + 1]) * (grid_lons[j + 1] - grid_lons[j]);
+      double area = (grid_lats[i] - grid_lats[i + 1]) * (grid_lons[j + 1] - grid_lons[j]);
 
       // If coverage is less than 30%, throw this box out
       //if(r_grid[(i * cols) + j] / area < 0.30) {
@@ -925,15 +925,15 @@ int main(int argc, char ** argv) {
   }
 
   if(plot_type == TYPE_TEXT) {
-    float* pred_data = new float[rows * cols];
-    float* base_data = new float[rows * cols];
+    double* pred_data = new double[rows * cols];
+    double* base_data = new double[rows * cols];
 
-    float map_data_max = -INFINITY;
-    float map_data_max_lat = 0;
-    float map_data_max_lon = 0;
-    float map_data_min = INFINITY;
-    float map_data_min_lat = 0;
-    float map_data_min_lon = 0;
+    double map_data_max = -INFINITY;
+    double map_data_max_lat = 0;
+    double map_data_max_lon = 0;
+    double map_data_min = INFINITY;
+    double map_data_min_lat = 0;
+    double map_data_min_lon = 0;
     for(i = 0; i < rows; i++) {
       for(j = 0; j < cols; j++) {
 	if(draw_mask[(i * cols) + j]) {
@@ -955,24 +955,24 @@ int main(int argc, char ** argv) {
       list<WPoint> wpoints;
       list<WPoint> pwpoints;
       list<WPoint>::const_iterator p_iter;
-      float base_data_sum = 0;
-      float base_data_avg = 0;
-      float total_weight = 0;
-      float total_squared_weight = 0;
-      float data_avg = 0;
-      float data_sum = 0;
-      float data_min = INFINITY;
-      float data_min_lon = 0;
-      float data_min_lat = 0;
-      float data_max = -INFINITY;
-      float data_max_lon = 0;
-      float data_max_lat = 0;
-      float data_variance = 0;
-      float data_stddev = 0;
-      float data_median = 0;
-      float data_wmedian = 0;
+      double base_data_sum = 0;
+      double base_data_avg = 0;
+      double total_weight = 0;
+      double total_squared_weight = 0;
+      double data_avg = 0;
+      double data_sum = 0;
+      double data_min = INFINITY;
+      double data_min_lon = 0;
+      double data_min_lat = 0;
+      double data_max = -INFINITY;
+      double data_max_lon = 0;
+      double data_max_lat = 0;
+      double data_variance = 0;
+      double data_stddev = 0;
+      double data_median = 0;
+      double data_wmedian = 0;
 
-      float* dataptr = data;
+      double* dataptr = data;
 
       if(pct_change_data) {
 	// Open baseline data file
@@ -1036,9 +1036,9 @@ int main(int argc, char ** argv) {
       for(i = 0; i < rows; i++) {
 	for(j = 0; j < cols; j++) {
 	  if(data_mask[(i * cols) + j] == 1) {
-	    float area = (M_PI / 180) * squared(EARTH_RADIUS) * fabs(sin(grid_lats[i] * (M_PI / 180)) - sin(grid_lats[i + 1] * (M_PI / 180))) * fabs(grid_lons[j] - grid_lons[j + 1]);
+	    double area = (M_PI / 180) * squared(EARTH_RADIUS) * fabs(sin(grid_lats[i] * (M_PI / 180)) - sin(grid_lats[i + 1] * (M_PI / 180))) * fabs(grid_lons[j] - grid_lons[j + 1]);
 
-	    //float area = cos(lats[i] * (M_PI / 180));
+	    //double area = cos(lats[i] * (M_PI / 180));
 	    data_sum += area * dataptr[(i * cols) + j];
 	    total_squared_weight += squared(area);
 	    total_weight += area;
@@ -1089,10 +1089,10 @@ int main(int argc, char ** argv) {
 
       // Work out the median
       wpoints.sort();
-      float desired_weight = total_weight / 2;
+      double desired_weight = total_weight / 2;
       WPoint curr_pt(0,0);
       WPoint last_pt(0,0);
-      float wsum = 0;
+      double wsum = 0;
       for(p_iter = wpoints.begin(); p_iter != wpoints.end() && wsum < desired_weight; p_iter++) {
 	last_pt = curr_pt;
 	curr_pt = *p_iter;
@@ -1100,11 +1100,11 @@ int main(int argc, char ** argv) {
       }
 
       // Interpolate and find best fit median
-      float wdiff = curr_pt.w;
+      double wdiff = curr_pt.w;
       data_wmedian = ((desired_weight - (wsum - wdiff)) / wdiff) * last_pt.p + ((wsum - desired_weight) / wdiff) * curr_pt.p;
 
 
-      desired_weight = (float)wpoints.size() / 2;
+      desired_weight = (double)wpoints.size() / 2;
       //desired_weight = wpoints.size() / 2;
       wsum = 0;
       for(p_iter = wpoints.begin(); p_iter != wpoints.end() && wsum <= desired_weight; p_iter++) {
@@ -1185,7 +1185,7 @@ int main(int argc, char ** argv) {
       }
       sprintf(buf2, "Data point (d, lon, lat): (%%0.%if)-(%%0.2f)-(%%0.2f)\n", dat_dec_places);
       fprintf(outfd, buf2, data[(j * cols) + i], lons[i], lats[j]);
-      //fprintf(outfd, buf2, data[(j * cols) + i], (float)i, (float)j);
+      //fprintf(outfd, buf2, data[(j * cols) + i], (double)i, (double)j);
     }
     delete[] pred_data;
     delete[] base_data;
@@ -1199,7 +1199,7 @@ int main(int argc, char ** argv) {
   } else if(plot_type == TYPE_GEOREF) {
     // Time for georef. Ugh.
     // Open data file
-    float* fulldata[NUM_TIMESLICES];
+    double* fulldata[NUM_TIMESLICES];
 
     infile = fopen(datafile, "r");
     
@@ -1208,7 +1208,7 @@ int main(int argc, char ** argv) {
     }
 
     for(i = 0; i < NUM_TIMESLICES; i++) {
-      fulldata[i] = new float[rows * cols];
+      fulldata[i] = new double[rows * cols];
       if(!fgets(buf, 1024, infile)) {
 	exit(19);
       }
