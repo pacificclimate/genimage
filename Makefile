@@ -2,7 +2,7 @@
 #CC=gcc-3.4
 #CXXFLAGS=-O0 -pg -g -Wall
 #CXXFLAGS=-pg -g -Wall
-CXXFLAGS=-O3 -funroll-loops 
+CXXFLAGS=-O3 -funroll-loops -Wall
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg -s
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg
 LDFLAGS=-L/usr/local/lib
