@@ -7,7 +7,7 @@ CXXFLAGS=-O3 -funroll-loops -Wall
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg
 LDFLAGS=-L/usr/local/lib
 LDLIBS=-lstdc++ -lgd -lpng -ljpeg -lfreetype -lz
-genimage: legend.o genimage.o support.o point.o line.o
+genimage: legend.o genimage.o support.o point.o line.o ConfigFile.o
 
 %.o: %.cc %.h Makefile
 
