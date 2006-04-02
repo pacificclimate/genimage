@@ -1,13 +1,13 @@
-#CXX=g++-3.4
-#CC=gcc-3.4
+CXX=g++-4.0
+CC=gcc-4.0
 #CXXFLAGS=-O0 -pg -g -Wall
 #CXXFLAGS=-pg -g -Wall
-CXXFLAGS=-O3 -funroll-loops -Wall
+CXXFLAGS=-g3 -O2 -march=pentium3 -Wall
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg -s
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg
 LDFLAGS=-L/usr/local/lib
-LDLIBS=-lstdc++ -lgd -lpng -ljpeg -lfreetype -lz
-genimage: legend.o genimage.o support.o point.o line.o ConfigFile.o
+LDLIBS=-lnetcdf_c++ -lnetcdf -lstdc++ -lgd -lpng -ljpeg -lfreetype -lz
+genimage: legend.o genimage.o support.o point.o line.o ConfigFile.o datamanager.o displayer.o canvas.o range.o
 
 %.o: %.cc %.h Makefile
 

@@ -19,17 +19,8 @@ using namespace std;
 #define LL_LENGTH 10
 #define SLMASK_LENGTH 2
 #define NUM_TIMESLICES 17
-#define POINT_SIZE 4
-#define LINE_WIDTH 3
 
 #define STATIC_ARGS 29
-#define LEG_BOTTOM_TEXT_HEIGHT 55
-#define LEG_TOP_TEXT_HEIGHT 35
-#define LEG_HEIGHT 120
-#define LAT_WIDTH 40
-#define LAT_EXTRA_HEIGHT 10
-#define LEG_EXTRA_RWIDTH 20
-#define BORDER_WIDTH 1
 
 #define IMAGE_TYPE_PNG 0
 #define IMAGE_TYPE_JPG 1
@@ -128,7 +119,7 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
   return 0;
 }
 
-inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width, struct range* drange) {
+inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width, Range* drange) {
   char* ptr;
   for(int y = 0; y < rows; y++) {
     if(fgets(dataline, dl_length, infile)) {
@@ -144,7 +135,7 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
   return 0;
 }
 
-inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width, struct range* drange, int* slmask, int allow_value) {
+inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width, Range* drange, int* slmask, int allow_value) {
   char* ptr;
   for(int y = 0; y < rows; y++) {
     if(fgets(dataline, dl_length, infile)) {

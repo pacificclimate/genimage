@@ -1,5 +1,5 @@
 #include <netcdfcpp.h>
-#include <expat.h>
+#include "ConfigFile.h"
 #include "genimage.h"
 
 #define TIMESOFYEAR 17

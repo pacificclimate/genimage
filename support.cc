@@ -49,7 +49,7 @@ bool within_bbox(Point p, Point topright, Point bottomleft) {
 }
 
 // Assumes points come in in clockwise order - THIS IS REQUIRED
-void draw_triangle(int rows, int cols, double* grid, double* lats, double* lons, Point p1, Point p2, Point p3) {
+void draw_triangle(int rows, int cols, double* grid, const double* lats, const double* lons, Point p1, Point p2, Point p3) {
   int i, j, k, l;
   double maxlat = lats[0], minlat = lats[rows];
   double maxlon = lons[cols], minlon = lons[0];
@@ -273,7 +273,7 @@ bool is_inside(Point p, Point **points, int numpoints) {
 }
 
 // Assumes incoming shapes are POLYGONS -- NOT overlapping
-void draw_polygon(int rows, int cols, double* grid, double* lats, double* lons, Point** points, int numpoints) {
+void draw_polygon(int rows, int cols, double* grid, const double* lats, const double* lons, Point** points, int numpoints) {
   int connects[numpoints * numpoints];
   int* conn;
   int i, j;

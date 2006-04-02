@@ -10,9 +10,9 @@ using namespace std;
 
 enum DIRECTIONS { LEFT, RIGHT };
 
-void draw_triangle(int rows, int cols, double* grid, double* lats, double* lons, Point p1, Point p2, Point p3);
+void draw_triangle(int rows, int cols, double* grid, const double* lats, const double* lons, Point p1, Point p2, Point p3);
 
-void draw_polygon(int rows, int cols, double* grid, double* lats, double* lons, Point **points, int numlines);
+void draw_polygon(int rows, int cols, double* grid, const double* lats, const double* lons, Point **points, int numlines);
 
 double clip_precision(double number, int num_mantissa_bits);
 double clip_precision(double number, int num_mantissa_bits);
