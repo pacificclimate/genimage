@@ -196,7 +196,7 @@ bool DataManager::get_data(double* values) {
   if(!f)
     return false;
   
-  string varname = scenario + "_" + timeslice + "_" + variable;
+  string varname = expt + "_" + timeslice + "_" + variable;
   NcVar* data = f->get_var((char*)varname.c_str());
   data->set_cur(timeofyear);
   data->get(values, 1, numrows(), numcols());
@@ -213,7 +213,7 @@ bool DataManager::get_basedata(double* values) {
   if(!f)
     return false;
   
-  string varname = scenario + "_1961_1990_" + variable;
+  string varname = expt + "_1961_1990_" + variable;
   NcVar* data = f->get_var((char*)varname.c_str());
   data->set_cur(timeofyear);
   data->get(values, 1, numrows(), numcols());

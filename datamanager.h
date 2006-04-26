@@ -3,6 +3,7 @@
 
 #include <gd.h>
 #include <netcdfcpp.h>
+#include "scattervars.h"
 #include "displayer.h"
 #include "config.h"
 #include <string>
@@ -16,7 +17,7 @@ class DataManager {
     
   DataManager(DataManager& d): config(d.config) {
     model = d.model;
-    scenario = d.scenario;
+    expt = d.expt;
     timeslice = d.timeslice;
     region = d.region;
     variable = d.variable;
@@ -24,6 +25,13 @@ class DataManager {
     f = 0;
   }
   
+  void loadScatterVars(ScatterVars* s) {
+    model = s->model;
+    expt = s->expt;
+    timeslice = s->timeslice;
+    variable = s->variable;
+  }
+
   // Calculates a mask, given the selected region and options, of which 
   // data values are inside the region
   bool get_datamask(int* values, const int* slmask, const double* grid_lats, const double* grid_longs);
@@ -52,7 +60,7 @@ class DataManager {
   void open_datafile();
 
   std::string model;
-  std::string scenario;
+  std::string expt;
   std::string timeslice;
   std::string region;
   std::string variable;

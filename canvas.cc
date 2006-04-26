@@ -22,7 +22,7 @@ Canvas::Canvas(Canvas& c) {
   this->fontsize = c.fontsize;
 }
 
-Canvas::Canvas(string fontfile, int width, int height, gdImagePtr img) {
+Canvas::Canvas(std::string fontfile, int width, int height, gdImagePtr img) {
   this->width = width;
   this->height = height;
   this->fontfile = fontfile;
@@ -83,6 +83,10 @@ void Canvas::copy(gdImagePtr src, int dx, int dy, int sx, int sy, int width, int
   gdImageCopy(img, src, dx + offset_x, dy + offset_y, sx, sy, width, height);
 }
 
+void Canvas::copy(Canvas& src, int dx, int dy, int sx, int sy, int width, int height) {
+  gdImageCopy(img, src.img, dx + offset_x, dy + offset_y, sx, sy, width, height);
+}
+
 void Canvas::drawRect(int x, int y, int width, int height) {
   gdImageRectangle(img, x + offset_x, y + offset_y, x + offset_x + width - 1, y + offset_y + height - 1, colour);
 }
@@ -115,11 +119,11 @@ void Canvas::fillRectAbs(int x1, int y1, int x2, int y2, int colour) {
   gdImageFilledRectangle(img, x1 + offset_x, y1 + offset_y, x2 + offset_x, y2 + offset_y, colour);
 }
 
-void Canvas::drawText(string s, int x, int y, VAlignment v, HAlignment h) {
+void Canvas::drawText(std::string s, int x, int y, VAlignment v, HAlignment h) {
   drawText((char*)s.c_str(), x, y, v, h, colour, fontsize);
 }
 
-void Canvas::drawText(string s, int x, int y, VAlignment v, HAlignment h, int colour, int size) {
+void Canvas::drawText(std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size) {
   drawText((char*)s.c_str(), x, y, v, h, colour, size);
 }
 
@@ -167,4 +171,93 @@ void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h, int col
 void Canvas::setOffsets(int offset_x, int offset_y) {
   this->offset_x = offset_x;
   this->offset_y = offset_y;
+}
+
+void addValue(gdPoint* p, int x, int y, int numpoints) {
+  for(int i = 0; i < numpoints; i++) {
+    p[i].x += x;
+    p[i].y += y;
+  }
+}
+
+void Canvas::drawSymbol(enum SYMBOL s, int x, int y) {
+  gdPoint utri[] = { {5, 1}, {0, 9}, {10, 9} };
+  gdPoint ltri[] = { { 1, 0}, {1, 10}, {9, 5} };
+  gdPoint rtri[] = { { 9, 0}, {9, 10}, {1, 5} };
+  gdPoint dtri[] = { { 5, 9}, {0, 1}, {10, 1} };
+  gdPoint dmond[] = { { 5, 1}, {1, 5}, {5, 9}, {9, 5} };
+  gdPoint star6[] = { {8, 5}, {10, 2}, {7, 2}, {5, -1}, {4, 2}, {0, 2}, {2, 5}, {0, 9}, {3, 8}, {5, 11}, {7, 8}, {10, 9} };
+  switch(s) {
+  case UTRIANGLE:
+    addValue(utri, x, y, 3);
+    gdImagePolygon(img, utri, 3, colour);
+    break;
+  case LTRIANGLE:
+    addValue(ltri, x, y, 3);
+    gdImagePolygon(img, ltri, 3, colour);
+    break;
+  case RTRIANGLE:
+    addValue(rtri, x, y, 3);
+    gdImagePolygon(img, rtri, 3, colour);
+    break;
+  case DTRIANGLE:
+    addValue(dtri, x, y, 3);
+    gdImagePolygon(img, dtri, 3, colour);
+    break;
+  case DIAMOND:
+    addValue(dmond, x, y, 4);
+    gdImagePolygon(img, dmond, 4, colour);
+    break;
+  case STAR6:
+    addValue(star6, x, y, 12);
+    gdImagePolygon(img, star6, 12, colour);
+    break;
+  case SQUARE:
+    gdImageRectangle(img, x + 1, y + 1, x + 9, y + 9, colour);
+    break;
+  case CIRCLE:
+    gdImageArc(img, x + 5, y + 5, 9, 9, 0, 360, colour);
+    break;
+  }
+}
+
+void Canvas::fillSymbol(enum SYMBOL s, int x, int y) {
+  gdPoint utri[] = { {5, 1}, {0, 9}, {10, 9} };
+  gdPoint ltri[] = { { 1, 0}, {1, 10}, {9, 5} };
+  gdPoint rtri[] = { { 9, 0}, {9, 10}, {1, 5} };
+  gdPoint dtri[] = { { 5, 9}, {0, 1}, {10, 1} };
+  gdPoint dmond[] = { { 5, 1}, {1, 5}, {5, 9}, {9, 5} };
+  gdPoint star6[] = { {8, 5}, {10, 2}, {7, 2}, {5, -1}, {4, 2}, {0, 2}, {2, 5}, {0, 9}, {3, 8}, {5, 11}, {7, 8}, {10, 9} };
+  switch(s) {
+  case UTRIANGLE:
+    addValue(utri, x, y, 3);
+    gdImageFilledPolygon(img, utri, 3, colour);
+    break;
+  case LTRIANGLE:
+    addValue(ltri, x, y, 3);
+    gdImageFilledPolygon(img, ltri, 3, colour);
+    break;
+  case RTRIANGLE:
+    addValue(rtri, x, y, 3);
+    gdImageFilledPolygon(img, rtri, 3, colour);
+    break;
+  case DTRIANGLE:
+    addValue(dtri, x, y, 3);
+    gdImageFilledPolygon(img, dtri, 3, colour);
+    break;
+  case DIAMOND:
+    addValue(dmond, x, y, 4);
+    gdImageFilledPolygon(img, dmond, 4, colour);
+    break;
+  case STAR6:
+    addValue(star6, x, y, 12);
+    gdImageFilledPolygon(img, star6, 12, colour);
+    break;
+  case SQUARE:
+    gdImageFilledRectangle(img, x + 1, y + 1, x + 9, y + 9, colour);
+    break;
+  case CIRCLE:
+    gdImageFilledEllipse(img, x + 5, y + 5, 9, 9, colour);
+    break;
+  }
 }

@@ -8,7 +8,6 @@
 #include <getopt.h>
 #include <sys/file.h>
 #include <errno.h>
-using namespace std;
 
 #include "range.h"
 #include "legend.h"
@@ -19,6 +18,7 @@ using namespace std;
 #define LL_LENGTH 10
 #define SLMASK_LENGTH 2
 #define NUM_TIMESLICES 17
+#define GCMINFO_COLS 30
 
 #define STATIC_ARGS 29
 
@@ -30,7 +30,24 @@ using namespace std;
 
 #define JPEG_QUALITY 90
 
-enum PLOT_TYPES{ TYPE_MAP, TYPE_LEGEND, TYPE_LAT, TYPE_ALL, TYPE_TEXT, TYPE_MASK, TYPE_GEOREF, TYPE_PLOTINFO, TYPE_REGIONONLY, TYPE_INVALID };
+enum PLOT_TYPES{ TYPE_MAP, TYPE_LEGEND, TYPE_LAT, TYPE_ALL, TYPE_TEXT, TYPE_MASK, TYPE_GEOREF, TYPE_PLOTINFO, TYPE_REGIONONLY, TYPE_SCATTER_TIMESLICE, TYPE_SCATTER_VARIABLE, TYPE_SCATTER_TIMESLICE_TEXT, TYPE_SCATTER_VARIABLE_TEXT, TYPE_INVALID};
+
+inline int nearest_offset(int size, double* data, double value) {
+  double old_diff = INFINITY;
+  int i;
+  for(i = 0; i < size; i++) {
+    const double diff = fabs(data[i] - value);
+    if(old_diff < diff) {
+      break;
+    }
+    old_diff = diff;
+  }
+  return i - 1;
+}
+
+inline double nearest(int size, double* data, double value) {
+  return data[nearest_offset(size, data, value)];
+}
 
 inline int lontox(int max_x, double off_lon, double min_lon, double max_lon, double lon) {
   double difflon = max_lon - min_lon;

@@ -3,7 +3,11 @@
 #include <gd.h>
 #include <string>
 
-using namespace std;
+#include "legendtoken.h"
+
+#define POLY_SIZE 11
+
+enum STYLES{DASHED};
 
 class Canvas {
 public:
@@ -11,7 +15,7 @@ public:
   enum HAlignment { LEFT, CENTER, RIGHT };
   Canvas();
   Canvas(Canvas& c);
-  Canvas(string fontfile, int width, int height, gdImagePtr img = 0);
+  Canvas(std::string fontfile, int width, int height, gdImagePtr img = 0);
   ~Canvas();
   bool writeImage(char* filename);
   bool writeImage(FILE* f);
@@ -21,6 +25,7 @@ public:
   void drawLine(int x1, int y1, int x2, int y2);
   void drawLine(int x1, int y1, int x2, int y2, int colour);
   void copy(gdImagePtr src, int dx, int dy, int sx, int sy, int width, int height);
+  void copy(Canvas& src, int dx, int dy, int sx, int sy, int width, int height);
   void drawRect(int x, int y, int width, int height);
   void drawRect(int x, int y, int width, int height, int colour);
   void drawRectAbs(int x1, int y1, int x2, int y2);
@@ -31,9 +36,26 @@ public:
   void fillRectAbs(int x1, int y1, int x2, int y2, int colour);
   void drawText(char* s, int x, int y, VAlignment v, HAlignment h);
   void drawText(char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size);
-  void drawText(string s, int x, int y, VAlignment v, HAlignment h);
-  void drawText(string s, int x, int y, VAlignment v, HAlignment h, int colour, int size);
+  void drawText(std::string s, int x, int y, VAlignment v, HAlignment h);
+  void drawText(std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size);
   void setOffsets(int offset_x, int offset_y);
+
+  void setAlpha(int alpha) {
+    gdImageAlphaBlending(img, alpha);
+  }
+
+  void setStyle(enum STYLES s) {
+    int grey = 0x00808080;
+    const int dashed[] = { gdTransparent, gdTransparent, grey, grey, gdTransparent, gdTransparent };
+    switch(s) {
+    case DASHED:
+      gdImageSetStyle(img, (int*)dashed, 6);
+      break;
+    }
+  }
+
+  void drawSymbol(enum SYMBOL s, int x, int y);
+  void fillSymbol(enum SYMBOL s, int x, int y);
   
   /* Image to draw on */
   gdImagePtr img;
@@ -51,7 +73,7 @@ public:
   int colour;
 
   /* Font options */
-  string fontfile;
+  std::string fontfile;
   int fontsize;
 };
 

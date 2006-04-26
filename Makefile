@@ -2,7 +2,7 @@ CXX=g++-4.0
 CC=gcc-4.0
 #CXXFLAGS=-O0 -pg -g -Wall
 #CXXFLAGS=-pg -g -Wall
-CXXFLAGS=-g3 -O2 -march=pentium3 -Wall
+CXXFLAGS=-g3 -O2 -march=pentium3 -Wall -Wextra
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg -s
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg
 LDFLAGS=-L/usr/local/lib
