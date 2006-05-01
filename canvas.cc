@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <math.h>
 #include "canvas.h"
 
 Canvas::Canvas() {
@@ -119,53 +120,54 @@ void Canvas::fillRectAbs(int x1, int y1, int x2, int y2, int colour) {
   gdImageFilledRectangle(img, x1 + offset_x, y1 + offset_y, x2 + offset_x, y2 + offset_y, colour);
 }
 
-void Canvas::drawText(std::string s, int x, int y, VAlignment v, HAlignment h) {
-  drawText((char*)s.c_str(), x, y, v, h, colour, fontsize);
+void Canvas::drawText(std::string s, int x, int y, VAlignment v, HAlignment h, double angle) {
+  drawText((char*)s.c_str(), x, y, v, h, colour, fontsize, angle);
 }
 
-void Canvas::drawText(std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size) {
-  drawText((char*)s.c_str(), x, y, v, h, colour, size);
+void Canvas::drawText(std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle) {
+  drawText((char*)s.c_str(), x, y, v, h, colour, size, angle);
 }
 
-void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h) {
-  drawText(s, x, y, v, h, colour, fontsize);
+void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h, double angle) {
+  drawText(s, x, y, v, h, colour, fontsize, angle);
 }
 
-void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size) {
+enum BRECT_POS { LOWERLEFT_X, LOWERLEFT_Y, LOWERRIGHT_X, LOWERRIGHT_Y, UPPERRIGHT_X, UPPERRIGHT_Y, UPPERLEFT_X, UPPERLEFT_Y };
+void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle) {
   int brect[8];
-  gdImageStringFT(NULL, brect, colour, (char*)fontfile.c_str(), size, 0, 0, 0, s);
+  gdImageStringFT(NULL, brect, colour, (char*)fontfile.c_str(), size, angle, 0, 0, s);
 
   switch(h) {
   case LEFT:
-    x -= brect[0];
+    x -= brect[UPPERLEFT_X];
     break;
     
   case CENTER:
-    x -= (brect[2] + brect[0]) / 2;
+    x -= (brect[LOWERRIGHT_X] + brect[UPPERLEFT_X]) / 2;
     break;
     
   case RIGHT:
-    x -= brect[2];
+    x -= brect[LOWERRIGHT_X];
     break;
   }
   
   switch(v) {
   case TOP:
-    y -= brect[5];
+    y -= brect[UPPERRIGHT_Y];
     break;
     
   case MIDDLE:
-    y -= (brect[1] + brect[5]) / 2;
+    y -= (brect[LOWERLEFT_Y] + brect[UPPERRIGHT_Y]) / 2;
     break;
     
   case BOTTOM:
-    y -= brect[1];
+    y -= brect[LOWERLEFT_Y];
     break;
   }
   x += offset_x;
   y += offset_y;
 
-  gdImageStringFT(img, brect, colour, (char*)fontfile.c_str(), size, 0, x, y, s);
+  gdImageStringFT(img, brect, colour, (char*)fontfile.c_str(), size, angle, x, y, s);
 } 
 
 void Canvas::setOffsets(int offset_x, int offset_y) {

@@ -8,38 +8,38 @@
 
 // Set offsets and such
 void Displayer::setOffsets(const gdImagePtr basemap) {
-  plot_width = basemap->sx;
-  plot_height = basemap->sy;
+  plot_width = basemap->sx + 2 * BORDER_WIDTH;
+  plot_height = basemap->sy + 2 * BORDER_WIDTH;
 
-  leg_width = plot_width + XAXIS_EXTRA_WIDTH + YAXIS_WIDTH;
-  leg_height = MAP_LEG_HEIGHT;
-
-  identify_width = leg_width;
-  identify_height = IDENTIFY_HEIGHT;
-
-  xaxis_width = leg_width;
-  xaxis_height = XAXIS_HEIGHT;
+  plot_offset_x = YAXIS_WIDTH;
+  plot_offset_y = YAXIS_EXTRA_HEIGHT;
 
   yaxis_width = YAXIS_WIDTH;
   yaxis_height = plot_height + YAXIS_EXTRA_HEIGHT;
 
-  img_width = leg_width;
-  img_height = leg_height + yaxis_height + xaxis_height + identify_height;
-
-  plot_offset_x = yaxis_width + BORDER_WIDTH;
-  plot_offset_y = YAXIS_EXTRA_HEIGHT - BORDER_WIDTH;
-
   yaxis_offset_x = 0;
   yaxis_offset_y = 0;
+
+  xaxis_width = plot_width + XAXIS_EXTRA_WIDTH + YAXIS_WIDTH;
+  xaxis_height = XAXIS_HEIGHT;
 
   xaxis_offset_x = 0;
   xaxis_offset_y = yaxis_height + yaxis_offset_y;
 
+  leg_width = xaxis_width;
+  leg_height = MAP_LEG_HEIGHT;
+
   leg_offset_x = 0;
   leg_offset_y = xaxis_offset_y + xaxis_height;
 
+  identify_width = leg_width;
+  identify_height = IDENTIFY_HEIGHT;
+
   identify_offset_x = 0;
   identify_offset_y = leg_offset_y + leg_height;
+
+  img_width = leg_width;
+  img_height = leg_height + yaxis_height + xaxis_height + identify_height;
 }
 
 // Set offsets and such
@@ -49,10 +49,10 @@ void Displayer::setScatterOffsets() {
   plot_width = SCATTER_WIDTH + 2 * BORDER_WIDTH;
   plot_height = SCATTER_HEIGHT + 2 * BORDER_WIDTH;
 
-  plot_offset_x = YAXIS_WIDTH;
+  plot_offset_x = YAXIS_WIDTH + YAXIS_TITLE_WIDTH;
   plot_offset_y = YAXIS_EXTRA_HEIGHT;
 
-  yaxis_width = YAXIS_WIDTH;
+  yaxis_width = YAXIS_WIDTH + YAXIS_TITLE_WIDTH;
   yaxis_height = plot_height + YAXIS_EXTRA_HEIGHT;
 
   yaxis_offset_x = 0;
@@ -65,7 +65,7 @@ void Displayer::setScatterOffsets() {
   leg_offset_y = plot_offset_y;
 
   xaxis_width = yaxis_width + plot_width + leg_width + XAXIS_EXTRA_WIDTH;
-  xaxis_height = XAXIS_HEIGHT;
+  xaxis_height = XAXIS_HEIGHT + XAXIS_TITLE_HEIGHT;
 
   xaxis_offset_x = 0;
   xaxis_offset_y = yaxis_height + yaxis_offset_y;
@@ -149,7 +149,6 @@ int dec_places_needed(double value, int dec_places) {
   return dec_places;
 }
 
-
 // Draw grid for scatter plot
 void Displayer::drawScatterGrid(const Range& xrange, const Range& yrange) {
   // Lon grid
@@ -180,6 +179,13 @@ void Displayer::drawScatterGrid(const Range& xrange, const Range& yrange) {
     // Draw horizontal lines
     c->drawLine(x, y, x + plot_width - 1, y);
   }
+}
+
+// Draw the titles on the axes
+void Displayer::drawAxisTitles() {
+  c->fontsize = 12;
+  c->drawText(xaxis_text, plot_offset_x + ((plot_width - 1) / 2), xaxis_offset_y + xaxis_height - 1, Canvas::BOTTOM, Canvas::CENTER);
+  c->drawText(yaxis_text, yaxis_offset_x + 5, plot_offset_y + ((plot_width - 1) / 2), Canvas::MIDDLE, Canvas::LEFT, 0.5 * M_PI);
 }
   
 // Draw (and possibly label) tickmarks on the map/plot
@@ -536,29 +542,29 @@ void Displayer::drawScale(Legend& leg_colours) {
   leg_dec_places = dec_places_needed((leg_colours.range.max() - leg_colours.range.min()) / (num_leg_segments), range_dynamic);
 
   int leg_left = plot_offset_x + BORDER_WIDTH;
-  int leg_right = plot_offset_y + plot_width - BORDER_WIDTH - 1;
+  int leg_right = plot_offset_x + plot_width - BORDER_WIDTH - 1;
 
   int leg_top = leg_offset_y + BORDER_WIDTH;
-  int leg_bottom = leg_offset_y + leg_height - MAP_LEG_BOTTOM_TEXT_HEIGHT;
+  int leg_bottom = leg_offset_y + leg_height - MAP_LEG_BOTTOM_TEXT_HEIGHT - BORDER_WIDTH;
 
-  int width = leg_right - leg_left;
-  int height = leg_bottom - leg_top;
+  int width = plot_width - 2 * BORDER_WIDTH + 1;
+  int height = leg_height - MAP_LEG_BOTTOM_TEXT_HEIGHT + 1;
   int numcolours = leg_colours.numcolours();
 
   // White out the white areas
   c->colour = 0x00FFFFFF;
   c->setAlpha(0);
-  c->fillRect(leg_offset_x, leg_offset_y, yaxis_width, height + 2 * BORDER_WIDTH + 1);
-  c->fillRect(leg_right + BORDER_WIDTH + 1, leg_offset_y, XAXIS_EXTRA_WIDTH, height + 2 * BORDER_WIDTH + 1);
-  c->fillRect(leg_offset_x, leg_bottom + 2 * BORDER_WIDTH, leg_width, leg_height - height - 2 * BORDER_WIDTH);
+  c->fillRect(leg_offset_x, leg_offset_y, yaxis_width, leg_width);
+  c->fillRect(leg_right + BORDER_WIDTH + 1, leg_offset_y, XAXIS_EXTRA_WIDTH + 1, height + 2 * BORDER_WIDTH);
+  c->fillRect(leg_offset_x, leg_bottom + 2 * BORDER_WIDTH, leg_width, leg_height - height);
   c->setAlpha(1);
   
   // Draw the title for the legend
   c->colour = 0x00000000;
-  c->drawText(leg_text, leg_left + width / 2, leg_bottom + MAP_LEG_LABEL_HEIGHT, Canvas::TOP, Canvas::CENTER);
+  c->drawText(xaxis_text, leg_left + width / 2, leg_bottom + MAP_LEG_LABEL_HEIGHT, Canvas::TOP, Canvas::CENTER);
       
   // Draw the legend
-  double factor = (double)width / (double)numcolours;
+  double factor = (double)(width - 1) / (double)numcolours;
   for(int i = numcolours - 1; (i + 1); i--) {
     int colour = leg_colours.lookup(i);
     c->fillRectAbs((int)round(i * factor) + leg_left, leg_top, (int)round((i + 1) * factor) + leg_left, leg_bottom, colour);
@@ -567,11 +573,11 @@ void Displayer::drawScale(Legend& leg_colours) {
   double lbl_offset;
   if(range_dynamic) {
     lbl_offset = 0;
-    factor = (double)(width) / (num_leg_segments);
+    factor = (double)(width - 1) / (num_leg_segments);
   } else {
     lbl_offset = factor;
-    factor = (double)(width - (2 * lbl_offset)) / num_leg_segments;
-  } 
+    factor = (double)(width - (2 * lbl_offset) - 1) / num_leg_segments;
+  }
   
   // Create the tick marks in the legend and label them
   double scale_factor = (leg_colours.range.max() - leg_colours.range.min()) / (num_leg_segments);

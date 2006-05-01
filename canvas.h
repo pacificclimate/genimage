@@ -9,6 +9,9 @@
 
 enum STYLES{DASHED};
 
+// BIG WORK SAVER: gdImageSetClip
+// Look into it... could clean up code a -lot-
+
 class Canvas {
 public:
   enum VAlignment { TOP, MIDDLE, BOTTOM };
@@ -34,10 +37,13 @@ public:
   void fillRect(int x, int y, int width, int height, int colour);
   void fillRectAbs(int x1, int y1, int x2, int y2);
   void fillRectAbs(int x1, int y1, int x2, int y2, int colour);
-  void drawText(char* s, int x, int y, VAlignment v, HAlignment h);
-  void drawText(char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size);
-  void drawText(std::string s, int x, int y, VAlignment v, HAlignment h);
-  void drawText(std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size);
+
+  void drawText(char* s, int x, int y, VAlignment v, HAlignment h, double angle = 0);
+  void drawText(char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle = 0);
+
+  void drawText(std::string s, int x, int y, VAlignment v, HAlignment h, double angle = 0);
+  void drawText(std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle = 0);
+
   void setOffsets(int offset_x, int offset_y);
 
   void setAlpha(int alpha) {

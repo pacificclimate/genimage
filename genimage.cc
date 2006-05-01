@@ -33,8 +33,8 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     { "scatter-type", 1, 0, 'h'},
     { "legend-decimal-places", 1, 0, 'i'},
     { "poly-point", 1, 0, 'j'},
-    //{ "lon-text-spacing", 1, 0, 'k'},
-    { "legend-text", 1, 0, 'l'},
+    { "y-axis-text", 1, 0, 'k'},
+    { "x-axis-text", 1, 0, 'l'},
     { "model", 1, 0, 'm'},
     { "region", 1, 0, 'n'},
     { "output-file", 1, 0, 'o'},
@@ -97,12 +97,12 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
       }
       break;
     case 'k':
-      // x-text-spacing
-      disp.x_text_spacing = atoi(optarg);
+      // Y axis text
+      disp.yaxis_text = optarg;
       break;
     case 'l':
-      // legend-text
-      disp.leg_text = optarg;
+      // X axis text
+      disp.xaxis_text = optarg;
       break;
     case 'm':
       // model
@@ -935,20 +935,33 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm) {
 
   loadData(dm, vars, leg_tokens);
 
-  // Now plot
+  // Set up the plot
   disp.setScatterOffsets();
   disp.setTicks(xrange, yrange);
   disp.createCanvas(dm.config.fontfile);
+
+  // Clear the plot area, draw what we want to...
   disp.clearPlot();
   disp.drawScatterGrid(xrange, yrange);
   disp.drawScatter(vars, xrange, yrange);
   disp.drawLines(vars, xrange, yrange);
+
+  // Draw tick marks, text labels, and title up X and Y axes
   disp.drawTicks(xrange, yrange);
+  disp.drawAxisTitles();
+
+  // Draw identifying text
   disp.clearIdentifyArea();
   disp.drawCreditText();
   disp.drawIdentifyText();
+
+  // Draw the legend
   disp.drawLegend(leg_tokens);
+
+  // Fill in gaps in the map
   disp.fillMapGaps();
+
+  // Write out the file
   disp.writePng(dm.config.outfile);
 }
 

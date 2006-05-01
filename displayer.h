@@ -23,8 +23,12 @@
 // General vars
 #define XAXIS_EXTRA_WIDTH 20
 #define XAXIS_HEIGHT 30
+#define XAXIS_TITLE_HEIGHT 15
+
 #define YAXIS_EXTRA_HEIGHT 10
+#define YAXIS_TITLE_WIDTH 15
 #define YAXIS_WIDTH 40
+
 #define BORDER_WIDTH 1
 #define IDENTIFY_HEIGHT 20
 
@@ -57,7 +61,8 @@ public:
   double x_text_spacing, y_text_spacing;
   int leg_dec_places;
   double range_min, range_max;
-  std::string leg_text;
+  std::string xaxis_text;
+  std::string yaxis_text;
   std::string credit_text;
   std::string identify_text;
 
@@ -97,6 +102,9 @@ public:
 
   // Draw a legend on the map mapping symbols to names (for plots)
   void drawLegend(list<LegendToken* >& vars);
+
+  // Draws the titles on the axes
+  void drawAxisTitles();
   
   // Draw (and possibly label) tickmarks on the map/plot
   void drawTicks(const Range& xrange, const Range& yrange);
