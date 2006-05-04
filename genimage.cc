@@ -24,10 +24,11 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
   list<Point* > lpoints;
   char* optstring = "a:b:c:e:f:g:h:i:j:k:l:m:n:o:p:r:s:t:u:v:w:x:y:z:";
   static struct option options[] = {
-    { "range-min", 1, 0, 'a'},
-    { "variable", 1, 0, 'b'},
+    { "xrange-min", 1, 0, 'a'},
+    { "xvariable", 1, 0, 'b'},
     { "colour-map", 1, 0, 'c'},
-    { "range-max", 1, 0, 'e'},
+    { "yvariable", 1, 0, 'd'},
+    { "xrange-max", 1, 0, 'e'},
     { "identify-text", 1, 0, 'f'},
     { "ocean-plot", 1, 0, 'g'},
     { "scatter-type", 1, 0, 'h'},
@@ -42,8 +43,8 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     { "resolution", 1, 0, 'r'},
     { "expt", 1, 0, 's'},
     { "timeslice", 1, 0, 't'},
-    //{ "lon-offset", 1, 0, 'u'},
-    //{ "lat-offset", 1, 0, 'v'},
+    { "yrange-min", 1, 0, 'u'},
+    { "yrange-max", 1, 0, 'v'},
     { "data-point", 1, 0, 'x'},
     { "timeofyear", 1, 0, 'y'},
     { "zoom-factor", 1, 0, 'z'},
@@ -58,20 +59,24 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     case 0:
       break;
     case 'a':
-      // range-min
-      disp.range_min = atof(optarg);
+      // xrange-min
+      disp.xrange_min = atof(optarg);
       break;
     case 'b':
-      // variable
-      dm.variable = optarg;
+      // X variable
+      c.xvariable = optarg;
       break;
     case 'c':
       // colour-map
       disp.colour_map = atoi(optarg);
       break;
+    case 'd':
+      // Y variable
+      c.yvariable = optarg;
+      break;
     case 'e':
-      // range-max
-      disp.range_max = atof(optarg);
+      // xrange-max
+      disp.xrange_max = atof(optarg);
       break;
     case 'f':
       // identify-text
@@ -133,12 +138,12 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
       dm.timeslice = optarg;
       break;
     case 'u':
-      // lat-offset
-      c.offset_lat = atof(optarg);
+      // yrange-min
+      disp.yrange_min = atof(optarg);
       break;
     case 'v':
-      // lon-offset
-      c.offset_lon = atof(optarg);
+      // yrange-max
+      disp.yrange_max = atof(optarg);
       break;
     case 'w':
       // plot-width
@@ -175,6 +180,7 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
 }
 
 void handleMap(Displayer& disp, DataManager& dm) {
+  dm.variable = dm.config.xvariable;
   dm.open_datafile();
 
   int datasize = dm.data_size();
@@ -231,6 +237,7 @@ void handleMap(Displayer& disp, DataManager& dm) {
 }
 
 void handleText(Displayer& disp, DataManager& dm) {
+  dm.variable = dm.config.xvariable;
   dm.open_datafile();
 
   FILE* outfd;
@@ -433,6 +440,7 @@ void handleText(Displayer& disp, DataManager& dm) {
 }
 
 void handleMask(Displayer& disp, DataManager& dm) {
+  dm.variable = dm.config.xvariable;
   dm.open_datafile();
 
   FILE* outfd;
@@ -483,6 +491,7 @@ void handleMask(Displayer& disp, DataManager& dm) {
 }
 
 void handleGeoref(Displayer& disp, DataManager& dm) {
+  dm.variable = dm.config.xvariable;
   dm.open_datafile();
 
   FILE* outfd;
@@ -550,6 +559,7 @@ void handleGeoref(Displayer& disp, DataManager& dm) {
 }
 
 void handlePlotInfo(Displayer& disp, DataManager& dm) {
+  dm.variable = dm.config.xvariable;
   dm.open_datafile();
   FILE* outfd;
 
@@ -592,6 +602,7 @@ void handlePlotInfo(Displayer& disp, DataManager& dm) {
 }
 
 void handleRegionOnly(Displayer& disp, DataManager& dm) {
+  dm.variable = dm.config.xvariable;
   dm.open_datafile();
   FILE* outfd;
 
@@ -673,12 +684,11 @@ void readGCMInfo(DataManager& dm, list<string*>& list) {
       bits[count] = *beg;
     if(count == GCMINFO_COLS) {
       list.push_back(bits);
+    } else {
+      delete[] bits;
     }
   }
-
-  cout << "Done reading GCM info" << endl;
 }
-
 
 #define DKRED 0x00800000
 #define LTRED 0x00FF0000
@@ -697,7 +707,8 @@ void readGCMInfo(DataManager& dm, list<string*>& list) {
 
 void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& legend_bits) {
   int datasize = 0;
-  double* data = 0;
+  double* xdata = 0;
+  double* ydata = 0;
   double* lats = 0;
   double* longs = 0;
   double* grid_lats = 0;
@@ -731,8 +742,6 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
   symbols["ga"] = CIRCLE;
   symbols["gg"] = SQUARE;
 
-  cout << "Started loading data" << endl;
-  
   string last_model = "";
   string last_expt = "";
   string last_nmodel = "";
@@ -742,15 +751,12 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
   LegendToken* ensemble = 0;
   list<ScatterVars*>::iterator vars_iter;
   for(vars_iter = vars.begin(); vars_iter != vars.end(); vars_iter++) {
-    //cout << "Data: '" << (*vars_iter)->model << "' '" << (*vars_iter)->expt << "' '" << (*vars_iter)->timeslice << "' '" << (*vars_iter)->variable << "'\n";
-    
     // Set symbols to use on map and legend
     if((*vars_iter)->model != last_model || (*vars_iter)->expt != last_expt) {
       if(symbols.find((*vars_iter)->expt) != symbols.end()) {
 	// Special case: If this is A1FI or such...
 	special = new LegendToken((*vars_iter)->model + " " + (*vars_iter)->expt, colours[(*vars_iter)->model], symbols[(*vars_iter)->expt], true);
 	legend_bits.push_back(special);
-	
       } else if((*vars_iter)->expt.substr(2, 1) == "x") {
 	// Ensemble run
 	ensemble = new LegendToken((*vars_iter)->model + " " + (*vars_iter)->expt, colours[(*vars_iter)->model], symbols[(*vars_iter)->expt.substr(0, 2)], false);
@@ -777,7 +783,6 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
       (*vars_iter)->symbol = tok;
     }
 
-
     // Set the appropriate data file bits
     dm.loadScatterVars(*vars_iter);
 
@@ -786,14 +791,17 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
       dm.open_datafile();
       datasize = dm.data_size();
       
-      if(data)
-	delete[] data;
+      if(xdata)
+	delete[] xdata;
+      if(ydata)
+	delete[] ydata;
       if(lats)
 	delete[] lats;
       if(longs)
 	delete[] longs;
       
-      data = new double[datasize];
+      xdata = new double[datasize];
+      ydata = new double[datasize];
       lats = new double[dm.lats_size()];
       longs = new double[dm.longs_size()];
 
@@ -826,44 +834,73 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
     }
 
     // Load the data in
-    dm.get_data(data);
+    dm.get_data(ydata);
+    if((*vars_iter)->xvariable != "") {
+      dm.loadScatterVars(*vars_iter, true);
+      dm.get_data(xdata);
+    }
 
     // Grab the data we want
     if(dm.config.scatter_type == ST_POINT) {
       // Load data at grid point
-      //cout << longs[x] << ", " << lats[y] << ": " << data[(y * dm.numcols()) + x] << endl;
       (*vars_iter)->setCoord(longs[x], lats[y]);
-      (*vars_iter)->setYData(data[(y * dm.numcols()) + x]);
+      if((*vars_iter)->xvariable != "")
+	(*vars_iter)->setXData(xdata[(y * dm.numcols()) + x]);
+      (*vars_iter)->setYData(ydata[(y * dm.numcols()) + x]);
+      //cout << longs[x] << ", " << lats[y] << ": " << ydata[(y * dm.numcols()) + x] << endl;
     } else if(dm.config.scatter_type == ST_REGION) {
       // Load in required data
       const int rows = dm.lats_size();
       const int cols = dm.longs_size();
-      double data_avg;
+      double xdata_avg;
+      double ydata_avg;
       double total_weight = 0;
-      double data_sum = 0;
+      double xdata_sum = 0;
+      double ydata_sum = 0;
 
       // Calculate weighted average over area; use that as data point
-      for(int i = 0; i < rows; i++) {
-	for(int j = 0; j < cols; j++) {
-	  const int offset = (i * cols) + j;
-	  if(mask[offset] == 1) {
-	    const double area = (M_PI / 180) * squared(EARTH_RADIUS) * fabs(sin(grid_lats[i] * (M_PI / 180)) - sin(grid_lats[i + 1] * (M_PI / 180))) * fabs(grid_longs[j] - grid_longs[j + 1]);
-	    data_sum += area * data[offset];
-	    total_weight += area;
+      if((*vars_iter)->xvariable == "") {
+	// If we don't have an X variable...
+	for(int i = 0; i < rows; i++) {
+	  for(int j = 0; j < cols; j++) {
+	    const int offset = (i * cols) + j;
+	    if(mask[offset] == 1) {
+	      const double area = (M_PI / 180) * squared(EARTH_RADIUS) * fabs(sin(grid_lats[i] * (M_PI / 180)) - sin(grid_lats[i + 1] * (M_PI / 180))) * fabs(grid_longs[j] - grid_longs[j + 1]);
+	      ydata_sum += area * ydata[offset];
+	      total_weight += area;
+	    }
 	  }
 	}
+	ydata_avg = ydata_sum / total_weight;
+	(*vars_iter)->setYData(ydata_avg);
+      } else {
+	// If we do have an X variable...
+	for(int i = 0; i < rows; i++) {
+	  for(int j = 0; j < cols; j++) {
+	    const int offset = (i * cols) + j;
+	    if(mask[offset] == 1) {
+	      const double area = (M_PI / 180) * squared(EARTH_RADIUS) * fabs(sin(grid_lats[i] * (M_PI / 180)) - sin(grid_lats[i + 1] * (M_PI / 180))) * fabs(grid_longs[j] - grid_longs[j + 1]);
+	      xdata_sum += area * xdata[offset];
+	      ydata_sum += area * ydata[offset];
+	      total_weight += area;
+	    }
+	  }
+	}
+	xdata_avg = xdata_sum / total_weight;
+	ydata_avg = ydata_sum / total_weight;
+	(*vars_iter)->setXData(xdata_avg);
+	(*vars_iter)->setYData(ydata_avg);
       }
-      data_avg = data_sum / total_weight;
-      //      cout << data_avg << endl;
       (*vars_iter)->setCoord(0, 0);
-      (*vars_iter)->setYData(data_avg);
     }
 
     last_expt = (*vars_iter)->expt;
     last_model = (*vars_iter)->model;
   }
-  if(data)
-    delete[] data;
+  if(xdata)
+    delete[] xdata;
+  if(ydata)
+    delete[] ydata;
   if(lats)
     delete[] lats;
   if(longs)
@@ -876,8 +913,6 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
     delete[] grid_lats;
   if(grid_longs)
     delete[] grid_longs;
-
-  cout << "Done loading data" << endl;
 }
 
 enum GCMINFO_OFFSETS{MODEL_OFFSET, MODEL_COUNT, JUNK1, SERIES_OFFSET, MODELNAME_OFFSET, EXPT_OFFSET, S2020_OFFSET, S2050_OFFSET, S2080_OFFSET};
@@ -887,6 +922,7 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm) {
 
   if(dm.config.scatter_type == ST_POINT && !dm.config.point_present) {
     cerr << "Must specify point when doing a scatter plot using a data point" << endl;
+    exit(1);
   }
 
   // Read in GCMINFO file
@@ -896,10 +932,10 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm) {
 
   // Read header and identify variable
   for(count = 0; count < GCMINFO_COLS; ++count) {
-    if((*beg)[count] == dm.variable)
+    if((*beg)[count] == dm.config.yvariable)
       var_offset = count;
-    cout << (*beg)[count] << " " << count << endl;
   }
+  delete[] (*beg);
   ++beg;
 
   // Create a list of the available expts
@@ -911,26 +947,27 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm) {
 
     if(var_available) {
       if(is_available((*beg)[S2020_OFFSET])) {
-	ScatterVars* v = new ScatterVars(model, expt, "2020", dm.variable);
+	ScatterVars* v = new ScatterVars(model, expt, "2020", "", dm.config.yvariable);
 	v->setXData(2020);
 	vars.push_back(v);
       }
       if(is_available((*beg)[S2050_OFFSET])) {
-	ScatterVars* v = new ScatterVars(model, expt, "2050", dm.variable);
+	ScatterVars* v = new ScatterVars(model, expt, "2050", "", dm.config.yvariable);
 	v->setXData(2050);
 	vars.push_back(v);
       }
       if(is_available((*beg)[S2080_OFFSET])) {
-	ScatterVars* v = new ScatterVars(model, expt, "2080", dm.variable);
+	ScatterVars* v = new ScatterVars(model, expt, "2080", "", dm.config.yvariable);
 	v->setXData(2080);
 	vars.push_back(v);
       }
     }
+    delete[] (*beg);
   }
 
   // Load in the data
   Range xrange(2010, 2090);
-  Range yrange(disp.range_min, disp.range_max);
+  Range yrange(disp.yrange_min, disp.yrange_max);
   list<LegendToken* > leg_tokens;
 
   loadData(dm, vars, leg_tokens);
@@ -963,6 +1000,109 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm) {
 
   // Write out the file
   disp.writePng(dm.config.outfile);
+
+  // Clean up
+  list<ScatterVars* >::iterator vars_iter;
+  for(vars_iter = vars.begin(); vars_iter != vars.end(); ++vars_iter) {
+    delete *vars_iter;
+  }
+
+  list<LegendToken* >::iterator lt_iter;
+  for(lt_iter = leg_tokens.begin(); lt_iter != leg_tokens.end(); ++lt_iter) {
+    delete *lt_iter;
+  }
+}
+
+void handleScatterVariable(Displayer& disp, DataManager& dm) {
+  int count = 0;
+  int xvar_offset = -1;
+  int yvar_offset = -1;
+
+  map<const string, int> ts;
+
+  ts["2020"] = 0;
+  ts["2050"] = 1;
+  ts["2080"] = 2;
+
+  if(dm.config.scatter_type == ST_POINT && !dm.config.point_present) {
+    cerr << "Must specify point when doing a scatter plot using a data point" << endl;
+  }
+
+  // Read in GCMINFO file
+  list<string*> gcminfo;
+  readGCMInfo(dm, gcminfo);
+  list<string*>::iterator beg = gcminfo.begin();
+
+  // Read header and identify variables
+  for(count = 0; count < GCMINFO_COLS; ++count) {
+    if((*beg)[count] == dm.config.xvariable)
+      xvar_offset = count;
+    else if((*beg)[count] == dm.config.yvariable)
+      yvar_offset = count;
+  }
+  delete[] (*beg);
+  ++beg;
+
+  // Create a list of the available expts
+  list<ScatterVars* > vars;
+  for(; beg != gcminfo.end(); ++beg) {
+    string model = (*beg)[MODEL_OFFSET];
+    string expt = (*beg)[EXPT_OFFSET];
+    bool xvar_available = is_available((*beg)[xvar_offset]);
+    bool yvar_available = is_available((*beg)[yvar_offset]);
+
+    if(xvar_available && yvar_available && ts.find(dm.timeslice) != ts.end()) {
+	ScatterVars* v = new ScatterVars(model, expt, dm.timeslice, dm.config.xvariable, dm.config.yvariable);
+	vars.push_back(v);
+    }
+    delete[] (*beg);
+  }
+
+  // Load in the data
+  Range xrange(disp.xrange_min, disp.xrange_max);
+  Range yrange(disp.yrange_min, disp.yrange_max);
+  list<LegendToken* > leg_tokens;
+
+  loadData(dm, vars, leg_tokens);
+
+  // Set up the plot
+  disp.setScatterOffsets();
+  disp.setTicks(xrange, yrange);
+  disp.createCanvas(dm.config.fontfile);
+
+  // Clear the plot area, draw what we want to...
+  disp.clearPlot();
+  disp.drawScatterGrid(xrange, yrange);
+  disp.drawScatter(vars, xrange, yrange);
+
+  // Draw tick marks, text labels, and title up X and Y axes
+  disp.drawTicks(xrange, yrange);
+  disp.drawAxisTitles();
+
+  // Draw identifying text
+  disp.clearIdentifyArea();
+  disp.drawCreditText();
+  disp.drawIdentifyText();
+
+  // Draw the legend
+  disp.drawLegend(leg_tokens);
+
+  // Fill in gaps in the map
+  disp.fillMapGaps();
+
+  // Write out the file
+  disp.writePng(dm.config.outfile);
+
+  // Clean up
+  list<ScatterVars* >::iterator vars_iter;
+  for(vars_iter = vars.begin(); vars_iter != vars.end(); ++vars_iter) {
+    delete *vars_iter;
+  }
+
+  list<LegendToken* >::iterator lt_iter;
+  for(lt_iter = leg_tokens.begin(); lt_iter != leg_tokens.end(); ++lt_iter) {
+    delete *lt_iter;
+  }
 }
 
 int main(int argc, char ** argv) {
@@ -1008,6 +1148,10 @@ int main(int argc, char ** argv) {
 
   case TYPE_SCATTER_TIMESLICE:
     handleScatterTimeslice(disp, dm);
+    break;
+    
+  case TYPE_SCATTER_VARIABLE:
+    handleScatterVariable(disp, dm);
     break;
     
   default:

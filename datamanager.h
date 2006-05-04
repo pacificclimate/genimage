@@ -13,7 +13,10 @@ class DataManager {
   DataManager(Config& c): config(c) {
     f = 0;
   }
-  ~DataManager() {}
+  ~DataManager() {
+    if(f) 
+      delete f;
+  }
     
   DataManager(DataManager& d): config(d.config) {
     model = d.model;
@@ -25,11 +28,15 @@ class DataManager {
     f = 0;
   }
   
-  void loadScatterVars(ScatterVars* s) {
+  void loadScatterVars(ScatterVars* s, bool loadXVar = false) {
     model = s->model;
     expt = s->expt;
     timeslice = s->timeslice;
-    variable = s->variable;
+    if(loadXVar) {
+      variable = s->xvariable;
+    } else {
+      variable = s->yvariable;
+    }
   }
 
   // Calculates a mask, given the selected region and options, of which 
@@ -64,6 +71,7 @@ class DataManager {
   std::string timeslice;
   std::string region;
   std::string variable;
+
   int timeofyear;
   Config& config;
 

@@ -60,7 +60,8 @@ public:
   int img_width, img_height;
   double x_text_spacing, y_text_spacing;
   int leg_dec_places;
-  double range_min, range_max;
+  double xrange_min, xrange_max;
+  double yrange_min, yrange_max;
   std::string xaxis_text;
   std::string yaxis_text;
   std::string credit_text;
@@ -78,13 +79,11 @@ public:
   int xaxis_offset_x, xaxis_offset_y;
   int yaxis_offset_x, yaxis_offset_y;
 
-  // Set offsets and such
+  // Sets offsets for map plots
   void setOffsets(const gdImagePtr basemap);
 
+  // Sets offsets for scatter plots
   void setScatterOffsets();
-
-  // Set ranges
-  void setRanges(const Range& datarange);
 
   // Fill in gaps in the map
   void fillMapGaps();

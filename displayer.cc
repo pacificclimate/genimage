@@ -76,8 +76,6 @@ void Displayer::setScatterOffsets() {
   img_width = xaxis_width;
   img_height = yaxis_height + xaxis_height + identify_height;
 
-  cout << plot_offset_x << ", " << plot_width << endl;
-
   identify_offset_x = 0;
   identify_offset_y = xaxis_offset_y + xaxis_height;
 }
@@ -510,13 +508,10 @@ void Displayer::plotDecal(string decalfile, Point dpoint, Range xrange, Range yr
 	  0, 0, decalimg->sx, decalimg->sy);
 }
 
-void Displayer::setRanges(const Range& datarange) {
-}
-
 Legend* Displayer::getLegend(const Range& datarange) {
   Legend* leg_colours = new Legend(datarange, colour_map, colour_map_rev);
-  double leg_range_min = range_min;
-  double leg_range_max = range_max;
+  double leg_range_min = xrange_min;
+  double leg_range_max = xrange_max;
 
   if(range_dynamic) {
     leg_range_min = datarange.min();
