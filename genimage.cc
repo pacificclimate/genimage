@@ -705,7 +705,7 @@ void readGCMInfo(DataManager& dm, list<string*>& list) {
 #define LTGRAY 0x00C0C0C0
 #define BLACK 0x00000000
 
-void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& legend_bits) {
+void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& legend_bits, Range& xrange, Range& yrange) {
   int datasize = 0;
   double* xdata = 0;
   double* ydata = 0;
@@ -844,9 +844,12 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
     if(dm.config.scatter_type == ST_POINT) {
       // Load data at grid point
       (*vars_iter)->setCoord(longs[x], lats[y]);
-      if((*vars_iter)->xvariable != "")
+      if((*vars_iter)->xvariable != "") {
 	(*vars_iter)->setXData(xdata[(y * dm.numcols()) + x]);
+	xrange.add(xdata[(y * dm.numcols()) + x]);
+      }
       (*vars_iter)->setYData(ydata[(y * dm.numcols()) + x]);
+      yrange.add(ydata[(y * dm.numcols()) + x]);
       //cout << longs[x] << ", " << lats[y] << ": " << ydata[(y * dm.numcols()) + x] << endl;
     } else if(dm.config.scatter_type == ST_REGION) {
       // Load in required data
@@ -872,6 +875,7 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
 	  }
 	}
 	ydata_avg = ydata_sum / total_weight;
+	yrange.add(ydata_avg);
 	(*vars_iter)->setYData(ydata_avg);
       } else {
 	// If we do have an X variable...
@@ -888,6 +892,8 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
 	}
 	xdata_avg = xdata_sum / total_weight;
 	ydata_avg = ydata_sum / total_weight;
+	xrange.add(xdata_avg);
+	yrange.add(ydata_avg);
 	(*vars_iter)->setXData(xdata_avg);
 	(*vars_iter)->setYData(ydata_avg);
       }
@@ -915,8 +921,19 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
     delete[] grid_longs;
 }
 
+void setRanges(Range& xrange, Range& yrange) {
+  double xbase = pow(10, floor(log10(xrange.range())) - 1);
+  xrange.setmin(floor(xrange.min() / xbase) * xbase);
+  xrange.setmax(ceil(xrange.max() / xbase) * xbase);
+  if(xrange.min() > 0) xrange.setmin(0);
+  double ybase = pow(10, floor(log10(yrange.range())) - 1);
+  yrange.setmin(floor(yrange.min() / ybase) * ybase);
+  yrange.setmax(ceil(yrange.max() / ybase) * ybase);
+  if(yrange.min() > 0) yrange.setmin(0);
+}
+
 enum GCMINFO_OFFSETS{MODEL_OFFSET, MODEL_COUNT, JUNK1, SERIES_OFFSET, MODELNAME_OFFSET, EXPT_OFFSET, S2020_OFFSET, S2050_OFFSET, S2080_OFFSET};
-void handleScatterTimeslice(Displayer& disp, DataManager& dm) {
+void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = false) {
   int count = 0;
   int var_offset = -1;
 
@@ -967,10 +984,17 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm) {
 
   // Load in the data
   Range xrange(2010, 2090);
-  Range yrange(disp.yrange_min, disp.yrange_max);
+  Range yrange;
   list<LegendToken* > leg_tokens;
 
-  loadData(dm, vars, leg_tokens);
+  loadData(dm, vars, leg_tokens, xrange, yrange);
+
+  if(disp.range_dynamic) {
+    setRanges(xrange, yrange);
+  } else {
+    yrange.setmin(disp.yrange_min);
+    yrange.setmax(disp.yrange_max);
+  }
 
   // Set up the plot
   disp.setScatterOffsets();
@@ -1013,16 +1037,16 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm) {
   }
 }
 
-void handleScatterVariable(Displayer& disp, DataManager& dm) {
+void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = false) {
   int count = 0;
   int xvar_offset = -1;
   int yvar_offset = -1;
 
   map<const string, int> ts;
 
-  ts["2020"] = 0;
-  ts["2050"] = 1;
-  ts["2080"] = 2;
+  ts["2020"] = S2020_OFFSET;
+  ts["2050"] = S2050_OFFSET;
+  ts["2080"] = S2080_OFFSET;
 
   if(dm.config.scatter_type == ST_POINT && !dm.config.point_present) {
     cerr << "Must specify point when doing a scatter plot using a data point" << endl;
@@ -1050,20 +1074,33 @@ void handleScatterVariable(Displayer& disp, DataManager& dm) {
     string expt = (*beg)[EXPT_OFFSET];
     bool xvar_available = is_available((*beg)[xvar_offset]);
     bool yvar_available = is_available((*beg)[yvar_offset]);
+    bool ts_available = ts.end() != ts.find(dm.timeslice) && is_available((*beg)[ts[dm.timeslice]]);
 
-    if(xvar_available && yvar_available && ts.find(dm.timeslice) != ts.end()) {
-	ScatterVars* v = new ScatterVars(model, expt, dm.timeslice, dm.config.xvariable, dm.config.yvariable);
-	vars.push_back(v);
+    if(xvar_available && yvar_available && ts_available) {
+      ScatterVars* v = new ScatterVars(model, expt, dm.timeslice, dm.config.xvariable, dm.config.yvariable);
+      vars.push_back(v);
     }
     delete[] (*beg);
   }
 
   // Load in the data
-  Range xrange(disp.xrange_min, disp.xrange_max);
-  Range yrange(disp.yrange_min, disp.yrange_max);
+  Range xrange;
+  Range yrange;
   list<LegendToken* > leg_tokens;
 
-  loadData(dm, vars, leg_tokens);
+  loadData(dm, vars, leg_tokens, xrange, yrange);
+
+  if(disp.range_dynamic) {
+    setRanges(xrange, yrange);
+  } else {
+    xrange.setmin(disp.xrange_min);
+    xrange.setmax(disp.xrange_max);
+    yrange.setmin(disp.yrange_min);
+    yrange.setmax(disp.yrange_max);
+  }
+
+  cout << disp.xrange_min << ", " << disp.xrange_max << endl;
+  cout << disp.yrange_min << ", " << disp.yrange_max << endl;
 
   // Set up the plot
   disp.setScatterOffsets();
@@ -1152,6 +1189,14 @@ int main(int argc, char ** argv) {
     
   case TYPE_SCATTER_VARIABLE:
     handleScatterVariable(disp, dm);
+    break;
+    
+  case TYPE_SCATTER_TIMESLICE_TEXT:
+    handleScatterTimeslice(disp, dm, true);
+    break;
+    
+  case TYPE_SCATTER_VARIABLE_TEXT:
+    handleScatterVariable(disp, dm, true);
     break;
     
   default:
