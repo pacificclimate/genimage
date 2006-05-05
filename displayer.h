@@ -35,6 +35,9 @@
 #define POINT_SIZE 4
 #define LINE_WIDTH 3
 
+#define DESIRED_XTICKS 5
+#define DESIRED_YTICKS 5
+
 class Displayer {
 public:
   Displayer() {

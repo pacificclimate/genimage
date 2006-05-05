@@ -40,6 +40,7 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     { "region", 1, 0, 'n'},
     { "output-file", 1, 0, 'o'},
     { "plot-type", 1, 0, 'p'},
+    { "scenario-set", 1, 0, 'q'},
     { "resolution", 1, 0, 'r'},
     { "expt", 1, 0, 's'},
     { "timeslice", 1, 0, 't'},
@@ -124,6 +125,10 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     case 'p':
       // plot-type
       c.plot_type = atoi(optarg);
+      break;
+    case 'q':
+      // scenario-set
+      c.scenario_set = optarg;
       break;
     case 'r':
       // resolution
@@ -922,14 +927,17 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
 }
 
 void setRanges(Range& xrange, Range& yrange) {
-  double xbase = pow(10, floor(log10(xrange.range())) - 1);
-  xrange.setmin(floor(xrange.min() / xbase) * xbase);
-  xrange.setmax(ceil(xrange.max() / xbase) * xbase);
+  double xtick_spacing = tick_spacing(xrange, DESIRED_XTICKS);
+  xrange.setmin(floor(xrange.min() / xtick_spacing) * xtick_spacing);
+  xrange.setmax(ceil(xrange.max() / xtick_spacing) * xtick_spacing);
   if(xrange.min() > 0) xrange.setmin(0);
-  double ybase = pow(10, floor(log10(yrange.range())) - 1);
-  yrange.setmin(floor(yrange.min() / ybase) * ybase);
-  yrange.setmax(ceil(yrange.max() / ybase) * ybase);
+  double ytick_spacing = tick_spacing(yrange, DESIRED_YTICKS);
+  yrange.setmin(floor(yrange.min() / ytick_spacing) * ytick_spacing);
+  yrange.setmax(ceil(yrange.max() / ytick_spacing) * ytick_spacing);
   if(yrange.min() > 0) yrange.setmin(0);
+
+  cout << xtick_spacing << ", " << ytick_spacing << endl;
+  cout << xrange.min() << ", " << xrange.max() << ", " <<  yrange.min() << ", " <<  yrange.max() << endl;
 }
 
 enum GCMINFO_OFFSETS{MODEL_OFFSET, MODEL_COUNT, JUNK1, SERIES_OFFSET, MODELNAME_OFFSET, EXPT_OFFSET, S2020_OFFSET, S2050_OFFSET, S2080_OFFSET};
@@ -962,7 +970,7 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
     string expt = (*beg)[EXPT_OFFSET];
     bool var_available = is_available((*beg)[var_offset]);
 
-    if(var_available) {
+    if(var_available && (dm.config.scenario_set == "" || dm.config.scenario_set == (*beg)[SERIES_OFFSET])) {
       if(is_available((*beg)[S2020_OFFSET])) {
 	ScatterVars* v = new ScatterVars(model, expt, "2020", "", dm.config.yvariable);
 	v->setXData(2020);
@@ -983,7 +991,7 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
   }
 
   // Load in the data
-  Range xrange(2010, 2090);
+  Range xrange;
   Range yrange;
   list<LegendToken* > leg_tokens;
 
@@ -995,35 +1003,59 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
     yrange.setmin(disp.yrange_min);
     yrange.setmax(disp.yrange_max);
   }
+  xrange.setmin(2010);
+  xrange.setmax(2090);
 
-  // Set up the plot
-  disp.setScatterOffsets();
-  disp.setTicks(xrange, yrange);
-  disp.createCanvas(dm.config.fontfile);
+  if(textOnly) {
+    ofstream out(dm.config.outfile.c_str());
 
-  // Clear the plot area, draw what we want to...
-  disp.clearPlot();
-  disp.drawScatterGrid(xrange, yrange);
-  disp.drawScatter(vars, xrange, yrange);
-  disp.drawLines(vars, xrange, yrange);
-
-  // Draw tick marks, text labels, and title up X and Y axes
-  disp.drawTicks(xrange, yrange);
-  disp.drawAxisTitles();
-
-  // Draw identifying text
-  disp.clearIdentifyArea();
-  disp.drawCreditText();
-  disp.drawIdentifyText();
-
-  // Draw the legend
-  disp.drawLegend(leg_tokens);
-
-  // Fill in gaps in the map
-  disp.fillMapGaps();
-
-  // Write out the file
-  disp.writePng(dm.config.outfile);
+    if(out.good()) {
+      list<ScatterVars*>::iterator i = vars.begin();
+      for(; i != vars.end(); i++) {
+	ScatterVars* s = *i;
+	out.fill('0');
+	out.precision(8);
+	out << s->model << " " << s->expt << ": (";
+	out.width(4);
+	out << s->lon << ")-(";
+	out.width(4);
+	out << s->lat << ")-(";
+	out << s->timeslice << ")-(";
+	out.width(6); 
+	out << s->daty << ")" << endl;
+      }      
+      out.close();
+    }
+  } else {
+    // Set up the plot
+    disp.setScatterOffsets();
+    disp.setTicks(xrange, yrange);
+    disp.createCanvas(dm.config.fontfile);
+    
+    // Clear the plot area, draw what we want to...
+    disp.clearPlot();
+    disp.drawScatterGrid(xrange, yrange);
+    disp.drawScatter(vars, xrange, yrange);
+    disp.drawLines(vars, xrange, yrange);
+    
+    // Draw tick marks, text labels, and title up X and Y axes
+    disp.drawTicks(xrange, yrange);
+    disp.drawAxisTitles();
+    
+    // Draw identifying text
+    disp.clearIdentifyArea();
+    disp.drawCreditText();
+    disp.drawIdentifyText();
+    
+    // Draw the legend
+    disp.drawLegend(leg_tokens);
+    
+    // Fill in gaps in the map
+    disp.fillMapGaps();
+    
+    // Write out the file
+    disp.writePng(dm.config.outfile);
+  }
 
   // Clean up
   list<ScatterVars* >::iterator vars_iter;
@@ -1050,6 +1082,12 @@ void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = fal
 
   if(dm.config.scatter_type == ST_POINT && !dm.config.point_present) {
     cerr << "Must specify point when doing a scatter plot using a data point" << endl;
+    exit(1);
+  }
+  
+  if(dm.timeslice == "" || dm.region == "" || dm.config.xvariable == "" || dm.config.yvariable == "") {
+    cerr << "Must specify timeslice, region, xvariable, and yvariable" << endl;
+    exit(1);
   }
 
   // Read in GCMINFO file
@@ -1076,7 +1114,7 @@ void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = fal
     bool yvar_available = is_available((*beg)[yvar_offset]);
     bool ts_available = ts.end() != ts.find(dm.timeslice) && is_available((*beg)[ts[dm.timeslice]]);
 
-    if(xvar_available && yvar_available && ts_available) {
+    if(xvar_available && yvar_available && ts_available && (dm.config.scenario_set == "" || dm.config.scenario_set == (*beg)[SERIES_OFFSET])) {
       ScatterVars* v = new ScatterVars(model, expt, dm.timeslice, dm.config.xvariable, dm.config.yvariable);
       vars.push_back(v);
     }
@@ -1099,36 +1137,52 @@ void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = fal
     yrange.setmax(disp.yrange_max);
   }
 
-  cout << disp.xrange_min << ", " << disp.xrange_max << endl;
-  cout << disp.yrange_min << ", " << disp.yrange_max << endl;
+  if(textOnly) {
+    ofstream out(dm.config.outfile.c_str());
 
-  // Set up the plot
-  disp.setScatterOffsets();
-  disp.setTicks(xrange, yrange);
-  disp.createCanvas(dm.config.fontfile);
-
-  // Clear the plot area, draw what we want to...
-  disp.clearPlot();
-  disp.drawScatterGrid(xrange, yrange);
-  disp.drawScatter(vars, xrange, yrange);
-
-  // Draw tick marks, text labels, and title up X and Y axes
-  disp.drawTicks(xrange, yrange);
-  disp.drawAxisTitles();
-
-  // Draw identifying text
-  disp.clearIdentifyArea();
-  disp.drawCreditText();
-  disp.drawIdentifyText();
-
-  // Draw the legend
-  disp.drawLegend(leg_tokens);
-
-  // Fill in gaps in the map
-  disp.fillMapGaps();
-
-  // Write out the file
-  disp.writePng(dm.config.outfile);
+    if(out.good()) {
+      list<ScatterVars*>::iterator i = vars.begin();
+      for(; i != vars.end(); i++) {
+	ScatterVars* s = *i;
+	out.fill('0');
+	out.precision(8);
+	out << s->model << " " << s->expt << ": (";
+	out.width(4);
+	out << s->lon << ")-(" << s->lat << ")-(";
+	out.width(8);
+	out << s->datx << ")-(" << s->daty << ")" << endl;
+      }      
+      out.close();
+    }
+  } else {
+    // Set up the plot
+    disp.setScatterOffsets();
+    disp.setTicks(xrange, yrange);
+    disp.createCanvas(dm.config.fontfile);
+    
+    // Clear the plot area, draw what we want to...
+    disp.clearPlot();
+    disp.drawScatterGrid(xrange, yrange);
+    disp.drawScatter(vars, xrange, yrange);
+    
+    // Draw tick marks, text labels, and title up X and Y axes
+    disp.drawTicks(xrange, yrange);
+    disp.drawAxisTitles();
+    
+    // Draw identifying text
+    disp.clearIdentifyArea();
+    disp.drawCreditText();
+    disp.drawIdentifyText();
+    
+    // Draw the legend
+    disp.drawLegend(leg_tokens);
+    
+    // Fill in gaps in the map
+    disp.fillMapGaps();
+    
+    // Write out the file
+    disp.writePng(dm.config.outfile);
+  }
 
   // Clean up
   list<ScatterVars* >::iterator vars_iter;

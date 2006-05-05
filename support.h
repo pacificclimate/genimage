@@ -3,6 +3,7 @@
 #include <iostream>
 #include <list>
 #include "point.h"
+#include "range.h"
 
 using namespace std;
 
@@ -51,5 +52,24 @@ class WPoint {
   bool operator == (const WPoint& pt) { return p == pt.p; }
   double p, w;
 };
+
+inline double tick_spacing(const Range& range, const int desired_ticks) {
+  const double desired_min = log10(desired_ticks);
+  const double range_log = log10(range.range());
+  const double base = floor(range_log - desired_min);
+  const double rb_diff = range_log - base;
+  const double log2 = log10(2);
+  const double log5 = log10(5);
+  
+  // Figure out how to get the right # of tickmarks on the graph
+  // Comparison against -1E12 is to compensate for error
+  if(rb_diff - (log5 + desired_min) > -1E-12) {
+    return pow(10, base) * 5;
+  } else if(rb_diff - (log2 + desired_min) > -1E-12) {
+    return pow(10, base) * 2;
+  } else {
+    return pow(10, base);
+  }
+}
 
 #endif

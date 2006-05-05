@@ -12,6 +12,8 @@ class DataManager {
  public:
   DataManager(Config& c): config(c) {
     f = 0;
+    timeofyear = 0;
+    model = expt = timeslice = region = variable = "";
   }
   ~DataManager() {
     if(f) 

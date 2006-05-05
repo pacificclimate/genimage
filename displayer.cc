@@ -164,7 +164,11 @@ void Displayer::drawScatterGrid(const Range& xrange, const Range& yrange) {
     const int y = plot_offset_y;
 
     // Draw vertical lines
-    c->drawLine(x, y, x, y + plot_height - 1);
+    if(i > -1E-12 && i < 1E-12) {
+      c->drawLine(x, y, x, y + plot_height - 1, 0x00808080);
+    } else {
+      c->drawLine(x, y, x, y + plot_height - 1);
+    }
   }
     
   // Lat points
@@ -175,7 +179,11 @@ void Displayer::drawScatterGrid(const Range& xrange, const Range& yrange) {
     const int y = plot_offset_y + (int)round((max_y - i) * factor);
 
     // Draw horizontal lines
-    c->drawLine(x, y, x + plot_width - 1, y);
+    if(i > -1E-12 && i < 1E-12) {
+      c->drawLine(x, y, x + plot_width - 1, y, 0x00808080);
+    } else {
+      c->drawLine(x, y, x + plot_width - 1, y);
+    }
   }
 }
 
@@ -307,40 +315,10 @@ void Displayer::drawLines(std::list<ScatterVars*>& vars, const Range& xrange, co
   }
 }
 
-#define DESIRED_XTICKS 4
-#define DESIRED_YTICKS 5
-
 // Sets appropriate tick mark distances
 void Displayer::setTicks(const Range& xrange, const Range& yrange) {
-  double desired_min = log10(DESIRED_XTICKS);
-  double range_log = log10(xrange.range());
-  double base = floor(range_log - desired_min);
-  double rb_diff = range_log - base;
-  double log2 = log10(2);
-  double log5 = log10(5);
-
-  // Figure out how to get the right # of tickmarks on the graph
-  // Comparison against -1E12 is to compensate for error
-  if(rb_diff - (log5 + desired_min) > -1E-12) {
-    x_text_spacing = pow(10, base) * 5;
-  } else if(rb_diff - (log2 + desired_min) > -1E-12) {
-    x_text_spacing = pow(10, base) * 2;
-  } else {
-    x_text_spacing = pow(10, base);
-  }
-
-  desired_min = log10(DESIRED_YTICKS);
-  range_log = log10(yrange.range());
-  base = floor(range_log - desired_min);
-  rb_diff = range_log - base;
-  
-  if(rb_diff - (log5 + desired_min) > -1E-12) {
-    y_text_spacing = pow(10, base) * 5;
-  } else if(rb_diff - (log2 + desired_min) > -1E-12) {
-    y_text_spacing = pow(10, base) * 2;
-  } else {
-    y_text_spacing = pow(10, base);
-  }
+  x_text_spacing = tick_spacing(xrange, DESIRED_XTICKS);
+  y_text_spacing = tick_spacing(yrange, DESIRED_YTICKS);
 }
 
 // Draw a map
