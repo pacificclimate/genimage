@@ -966,7 +966,7 @@ bool compareScatterYVar(const ScatterVars* a, const ScatterVars* b) {
 }
 
 double pctile(list<ScatterVars*>& vars, double pct) {
-  int element = (int)floor(pct * vars.size());
+  int element = (int)floor(pct * (vars.size() - 1));
   list<ScatterVars*>::const_iterator i;
   int j;
   for(j = 0, i = vars.begin(); j < element; ++i, ++j);
