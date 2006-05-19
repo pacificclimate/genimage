@@ -16,6 +16,8 @@
     * y = ((-lat / 180) * height) + center_y
 */
 
+
+// NOTE: CONVERT TO auto_ptr ET AL: http://ootips.org/yonat/4dev/smart-pointers.html
 using namespace std;
 
 void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** argv) {
@@ -169,6 +171,7 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
 
   // Store up the data points
   c.numpoints = lpoints.size();
+  c.points = 0;
   if(c.numpoints) {
     list<Point* >::const_iterator lpoints_iter;
     int i = 0;
@@ -965,51 +968,49 @@ bool compareScatterYVar(const ScatterVars* a, const ScatterVars* b) {
   return a->daty < b->daty;
 }
 
-double pctile(list<ScatterVars*>& vars, double pct) {
+void pctile(list<ScatterVars*>& vars, double pct, ScatterVars* v) {
   int element = (int)floor(pct * (vars.size() - 1));
   list<ScatterVars*>::const_iterator i;
   int j;
   for(j = 0, i = vars.begin(); j < element; ++i, ++j);
-  return (*i)->daty;
+  v->datx = (*i)->datx;
+  v->daty = (*i)->daty;
+  v->lon = (*i)->lon;
+  v->lat = (*i)->lat;
 }
 
 void calcPercentiles(list<ScatterVars*>& vars, list<LegendToken* >& leg_tokens) {
-  map<const string, list<ScatterVars*> > vars_by_ts;
-  list<ScatterVars*> s2020;
-  list<ScatterVars*> s2050;
-  list<ScatterVars*> s2080;
-  vars_by_ts["2020"] = s2020;
-  vars_by_ts["2050"] = s2050;
-  vars_by_ts["2080"] = s2080;
+  const double percentiles[] = { 0.1, 0.5, 0.9 };
+  const string years[] = { "2020", "2050", "2080" };
+  const string desc[] = { "10th percentile", "Median", "90th percentile" };
+  const enum SYMBOL symbols[] = { DTRIANGLE, DIAMOND, UTRIANGLE };
 
+  // Set up the list-map combination
+  map<const string, list<ScatterVars*> > vars_by_ts;
+  list<ScatterVars*> l[3];
+  for(int i = 0; i < 3; i++) {
+    vars_by_ts[years[i]] = l[i];
+  }
+
+  // Populate the lists in the map
   list<ScatterVars*>::const_iterator i;
   for(i = vars.begin(); i != vars.end(); ++i) {
     vars_by_ts[(*i)->timeslice].push_back(*i);
   }
 
-  vars_by_ts["2020"].sort(compareScatterYVar);
-  vars_by_ts["2050"].sort(compareScatterYVar);
-  vars_by_ts["2080"].sort(compareScatterYVar);
-
-  LegendToken* tok[3];
-  tok[0] = new LegendToken("10th pctile", 0x00000000, DTRIANGLE, true);
-  tok[1] = new LegendToken("Median", 0x00000000, DIAMOND, true);
-  tok[2] = new LegendToken("90th pctile", 0x00000000, UTRIANGLE, true);
-  leg_tokens.push_back(tok[2]);
-  leg_tokens.push_back(tok[1]);
-  leg_tokens.push_back(tok[0]);
-
-  double percentiles[] = { 0.1, 0.5, 0.9 };
-  string years[] = { "2020", "2050", "2080" };
-  double yearsnum[] = { 2020, 2050, 2080 };
-  string desc[] = { "10th pctile", "Median", "90th pctile" };
-
+  // Sort the lists
   for(int i = 0; i < 3; i++) {
+    vars_by_ts[years[i]].sort(compareScatterYVar);
+  }
+
+  // Create new symbols and give them data
+  for(int i = 0; i < 3; i++) {
+    LegendToken* tok = new LegendToken(desc[i], 0x00000000, symbols[i], true);
+    leg_tokens.push_back(tok);
     for(int j = 0; j < 3; j++) {
       ScatterVars* v = new ScatterVars(desc[i], "", years[j], "", "");
-      v->datx = yearsnum[j];
-      v->daty = pctile(vars_by_ts[years[j]], percentiles[i]);
-      v->symbol = tok[i];
+      pctile(vars_by_ts[years[j]], percentiles[i], v);
+      v->symbol = tok;
       vars.push_back(v);
     }
   }
@@ -1320,5 +1321,11 @@ int main(int argc, char ** argv) {
   default:
     fprintf(stderr, "Invalid plot type!\n");
     break;
+  }
+
+  if(c.points) {
+    for(int i = 0; i < c.numpoints; i++)
+      delete c.points[i];
+    delete[] c.points;
   }
 }
