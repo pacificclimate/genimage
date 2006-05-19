@@ -32,7 +32,6 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     { "identify-text", 1, 0, 'f'},
     { "ocean-plot", 1, 0, 'g'},
     { "scatter-type", 1, 0, 'h'},
-    { "legend-decimal-places", 1, 0, 'i'},
     { "poly-point", 1, 0, 'j'},
     { "y-axis-text", 1, 0, 'k'},
     { "x-axis-text", 1, 0, 'l'},
@@ -52,6 +51,7 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     { "show-grid", 0, &disp.grid, 1},
     { "colour-map-inverse", 0, &disp.colour_map_rev, 1},
     { "dynamic-range", 0, &disp.range_dynamic, 1},
+    { "percentiles", 0, &c.percentiles, 1},
     { "percent-change-calculations", 0, &c.pct_change_data, 1},
     { 0, 0, 0, 0 }
   };
@@ -90,10 +90,6 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     case 'h':
       // scatter-type
       c.scatter_type = atoi(optarg);
-      break;
-    case 'i':
-      // legend-decimal-places
-      disp.leg_dec_places = atoi(optarg);
       break;
     case 'j':
       // poly-point
@@ -249,6 +245,11 @@ void handleText(Displayer& disp, DataManager& dm) {
 
   if(dm.config.outfile.length() && dm.config.outfile != "-") {
     outfd = fopen(dm.config.outfile.c_str(), "w");
+    if(!outfd) {
+      fprintf(stderr, "Couldn't open file %s\n", dm.config.outfile.c_str());
+      exit(1);
+    }
+
   } else {
     outfd = stdout;
   }
@@ -288,125 +289,124 @@ void handleText(Displayer& disp, DataManager& dm) {
   fprintf(outfd, "Map offset: (%i)-(%i)\n", disp.plot_offset_x, disp.plot_offset_y);
 
   // Data analysis loop stuff
-  if(dm.config.numpoints > 2) {
-    list<WPoint> wpoints;
-    list<WPoint>::const_iterator p_iter;
-    double base_data_sum = 0;
-    double base_data_avg = 0;
-    double total_weight = 0;
-    double total_squared_weight = 0;
-    double data_avg = 0;
-    double data_sum = 0;
-    double data_variance = 0;
-    double data_stddev = 0;
-    double data_median = 0;
-    double data_wmedian = 0;
-    int i, j;
 
-    double* base_data = 0;
-
-    LatLonRange llrange;
+  list<WPoint> wpoints;
+  list<WPoint>::const_iterator p_iter;
+  double base_data_sum = 0;
+  double base_data_avg = 0;
+  double total_weight = 0;
+  double total_squared_weight = 0;
+  double data_avg = 0;
+  double data_sum = 0;
+  double data_variance = 0;
+  double data_stddev = 0;
+  double data_median = 0;
+  double data_wmedian = 0;
+  int i, j;
+  
+  double* base_data = 0;
+  
+  LatLonRange llrange;
+  
+  double* dataptr = data;
+  
+  if(dm.config.pct_change_data) {
+    base_data = new double[datasize];
+    dm.get_basedata(base_data);
     
-    double* dataptr = data;
-    
-    if(dm.config.pct_change_data) {
-      base_data = new double[datasize];
-      dm.get_basedata(base_data);
-
-      // Correct the baseline data grid for the % change
-      for(i = 0; i < rows; i++) {
-	for(j = 0; j < cols; j++) {
-	  const int offset = (i * cols) + j;
-	  data[offset] = base_data[offset] + base_data[offset] * (data[offset] / 100);
-	}
-      }
-    }
-    
+    // Correct the baseline data grid for the % change
     for(i = 0; i < rows; i++) {
       for(j = 0; j < cols; j++) {
 	const int offset = (i * cols) + j;
-	if(mask[offset] == 1) {
-	  const double area = (M_PI / 180) * squared(EARTH_RADIUS) * fabs(sin(grid_lats[i] * (M_PI / 180)) - sin(grid_lats[i + 1] * (M_PI / 180))) * fabs(grid_longs[j] - grid_longs[j + 1]);
-	  data_sum += area * dataptr[offset];
-	  total_squared_weight += squared(area);
-	  total_weight += area;
-	  llrange.addPoint(data[offset], longs[j], lats[i]);
-	  wpoints.push_back(WPoint(data[offset], area));
-	  if(dm.config.pct_change_data) {
-	    base_data_sum += area * base_data[offset];
-	  }
-	}
+	data[offset] = base_data[offset] + base_data[offset] * (data[offset] / 100);
       }
-    }
-    
-    data_avg = data_sum / total_weight;
-    
-    if(dm.config.pct_change_data) {
-      base_data_avg = base_data_sum / total_weight;
-    }
-    
-    // Go through the list of pts and weights getting variance components
-    for(p_iter = wpoints.begin(); p_iter != wpoints.end(); p_iter++) {
-      data_variance += squared((*p_iter).p - data_avg) * (*p_iter).w;
-    }
-    
-    if(dm.config.pct_change_data) {
-      data_avg = ((data_avg - base_data_avg) / base_data_avg) * 100;
-    }
-
-    // Calculate variance
-    // See http://pygsl.sourceforge.net/reference/pygsl/node35.html
-    data_variance *= total_weight / (squared(total_weight) - total_squared_weight);
-    
-    // Calculate standard deviation
-    data_stddev = sqrt(data_variance);
-    
-    // Work out the median
-    wpoints.sort();
-    double desired_weight = total_weight / 2;
-    WPoint curr_pt(0,0);
-    WPoint last_pt(0,0);
-    double wsum = 0;
-    for(p_iter = wpoints.begin(); p_iter != wpoints.end() && wsum < desired_weight; p_iter++) {
-      last_pt = curr_pt;
-      curr_pt = *p_iter;
-      wsum += curr_pt.w;
-    }
-    
-    // Interpolate and find best fit median
-    double wdiff = curr_pt.w;
-    data_wmedian = ((desired_weight - (wsum - wdiff)) / wdiff) * last_pt.p + ((wsum - desired_weight) / wdiff) * curr_pt.p;
-
-    desired_weight = (double)wpoints.size() / 2;
-    wsum = 0;
-    for(p_iter = wpoints.begin(); p_iter != wpoints.end() && wsum <= desired_weight; p_iter++) {
-      last_pt = curr_pt;
-      curr_pt = *p_iter;
-      wsum++;
-    }
-
-    // Finish the median calculation
-    if(wsum - desired_weight < 1) {
-      data_median = curr_pt.p;
-    } else {
-      // Average of 2
-      data_median = (last_pt.p + curr_pt.p) / 2;
-    }
-    
-    fprintf(outfd, "Selection area weighted mean: (%0.6f)\n", data_avg);
-    fprintf(outfd, "Selection area weighted median: (%0.6f)\n", data_wmedian);
-    fprintf(outfd, "Selection area weighted standard deviation: (%0.6f)\n", data_stddev);
-    fprintf(outfd, "Selection median: (%0.6f)\n", data_median);
-    fprintf(outfd, "Selection data min (d, lon, lat): (%0.6f)-(%0.2f)-(%0.2f)\n", llrange.getMin(), llrange.getMinLong(), llrange.getMinLat());
-    fprintf(outfd, "Selection data max (d, lon, lat): (%0.6f)-(%0.2f)-(%0.2f)\n", llrange.getMax(), llrange.getMaxLong(), llrange.getMaxLat());
-    fprintf(outfd, "Selection area: (%.0f) km<sup>2</sup>\n", total_weight);
-    fprintf(outfd, "Selection num grid boxes: (%i)\n", wpoints.size());
-
-    if(base_data) {
-      delete[] base_data;
     }
   }
   
+  for(i = 0; i < rows; i++) {
+    for(j = 0; j < cols; j++) {
+      const int offset = (i * cols) + j;
+      if(mask[offset] == 1) {
+	const double area = (M_PI / 180) * squared(EARTH_RADIUS) * fabs(sin(grid_lats[i] * (M_PI / 180)) - sin(grid_lats[i + 1] * (M_PI / 180))) * fabs(grid_longs[j] - grid_longs[j + 1]);
+	data_sum += area * dataptr[offset];
+	total_squared_weight += squared(area);
+	total_weight += area;
+	llrange.addPoint(data[offset], longs[j], lats[i]);
+	wpoints.push_back(WPoint(data[offset], area));
+	if(dm.config.pct_change_data) {
+	  base_data_sum += area * base_data[offset];
+	}
+      }
+    }
+  }
+  
+  data_avg = data_sum / total_weight;
+  
+  if(dm.config.pct_change_data) {
+    base_data_avg = base_data_sum / total_weight;
+  }
+  
+  // Go through the list of pts and weights getting variance components
+  for(p_iter = wpoints.begin(); p_iter != wpoints.end(); p_iter++) {
+    data_variance += squared((*p_iter).p - data_avg) * (*p_iter).w;
+  }
+  
+  if(dm.config.pct_change_data) {
+    data_avg = ((data_avg - base_data_avg) / base_data_avg) * 100;
+  }
+  
+  // Calculate variance
+  // See http://pygsl.sourceforge.net/reference/pygsl/node35.html
+  data_variance *= total_weight / (squared(total_weight) - total_squared_weight);
+  
+  // Calculate standard deviation
+  data_stddev = sqrt(data_variance);
+  
+  // Work out the median
+  wpoints.sort();
+  double desired_weight = total_weight / 2;
+  WPoint curr_pt(0,0);
+  WPoint last_pt(0,0);
+  double wsum = 0;
+  for(p_iter = wpoints.begin(); p_iter != wpoints.end() && wsum < desired_weight; p_iter++) {
+    last_pt = curr_pt;
+    curr_pt = *p_iter;
+    wsum += curr_pt.w;
+  }
+  
+  // Interpolate and find best fit median
+  double wdiff = curr_pt.w;
+  data_wmedian = ((desired_weight - (wsum - wdiff)) / wdiff) * last_pt.p + ((wsum - desired_weight) / wdiff) * curr_pt.p;
+  
+  desired_weight = (double)wpoints.size() / 2;
+  wsum = 0;
+  for(p_iter = wpoints.begin(); p_iter != wpoints.end() && wsum <= desired_weight; p_iter++) {
+    last_pt = curr_pt;
+    curr_pt = *p_iter;
+    wsum++;
+  }
+  
+  // Finish the median calculation
+  if(wsum - desired_weight < 1) {
+    data_median = curr_pt.p;
+  } else {
+    // Average of 2
+    data_median = (last_pt.p + curr_pt.p) / 2;
+  }
+  
+  fprintf(outfd, "Selection area weighted mean: (%0.6f)\n", data_avg);
+  fprintf(outfd, "Selection area weighted median: (%0.6f)\n", data_wmedian);
+  fprintf(outfd, "Selection area weighted standard deviation: (%0.6f)\n", data_stddev);
+  fprintf(outfd, "Selection median: (%0.6f)\n", data_median);
+  fprintf(outfd, "Selection data min (d, lon, lat): (%0.6f)-(%0.2f)-(%0.2f)\n", llrange.getMin(), llrange.getMinLong(), llrange.getMinLat());
+  fprintf(outfd, "Selection data max (d, lon, lat): (%0.6f)-(%0.2f)-(%0.2f)\n", llrange.getMax(), llrange.getMaxLong(), llrange.getMaxLat());
+  fprintf(outfd, "Selection area: (%.0f) km<sup>2</sup>\n", total_weight);
+  fprintf(outfd, "Selection num grid boxes: (%i)\n", wpoints.size());
+  
+  if(base_data) {
+    delete[] base_data;
+  }
+
   // If the user wants to know about the data box that a specific lat/lon 
   // is in, report back
   if(dm.config.point_present) {
@@ -755,26 +755,50 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
   LegendToken* special = 0;
   LegendToken* ensemble = 0;
   list<ScatterVars*>::iterator vars_iter;
+
   for(vars_iter = vars.begin(); vars_iter != vars.end(); vars_iter++) {
     // Set symbols to use on map and legend
     if((*vars_iter)->model != last_model || (*vars_iter)->expt != last_expt) {
+      int colour;
+      enum SYMBOL symbol;
+
+      if(dm.config.percentiles) {
+	symbol = NONE;
+	colour = LTGRAY;
+      } else {
+	string id = (*vars_iter)->expt.substr(0, 2);
+	if(symbols.find(id) != symbols.end()) {
+	  symbol = symbols[id];
+	} else {
+	  symbol = NONE;
+	}
+	colour = colours[(*vars_iter)->model];
+      }
       if(symbols.find((*vars_iter)->expt) != symbols.end()) {
 	// Special case: If this is A1FI or such...
-	special = new LegendToken((*vars_iter)->model + " " + (*vars_iter)->expt, colours[(*vars_iter)->model], symbols[(*vars_iter)->expt], true);
+	if(dm.config.percentiles) {
+	  symbol = NONE;
+	} else {
+	  symbol = symbols[(*vars_iter)->expt];
+	}
+	special = new LegendToken((*vars_iter)->model + " " + (*vars_iter)->expt, colour, symbol, true);
 	legend_bits.push_back(special);
       } else if((*vars_iter)->expt.substr(2, 1) == "x") {
 	// Ensemble run
-	ensemble = new LegendToken((*vars_iter)->model + " " + (*vars_iter)->expt, colours[(*vars_iter)->model], symbols[(*vars_iter)->expt.substr(0, 2)], false);
+	ensemble = new LegendToken((*vars_iter)->model + " " + (*vars_iter)->expt, colour, symbol, false);
 	legend_bits.push_back(ensemble);
       } else {
 	// Normal...
+
+	// If the first 2 digits of the experiment match, tack the last digit onto the end of the name
 	if((*vars_iter)->model == last_nmodel && (*vars_iter)->expt.substr(0, 2) == last_nexpt.substr(0,2)) {
 	  tok->name += "," + (*vars_iter)->expt.substr(2, 1);
 	} else {
-	  // Reset tok
-	  tok = new LegendToken((*vars_iter)->model + " " + (*vars_iter)->expt, colours[(*vars_iter)->model], symbols[(*vars_iter)->expt.substr(0, 2)], true);
+	  // If they aren't the same, it's time to push a new token up
+	  tok = new LegendToken((*vars_iter)->model + " " + (*vars_iter)->expt, colour, symbol, true);
 	  legend_bits.push_back(tok);
 	}
+
 	last_nmodel = (*vars_iter)->model;
 	last_nexpt = (*vars_iter)->expt;
       }
@@ -935,9 +959,60 @@ void setRanges(Range& xrange, Range& yrange) {
   yrange.setmin(floor(yrange.min() / ytick_spacing) * ytick_spacing);
   yrange.setmax(ceil(yrange.max() / ytick_spacing) * ytick_spacing);
   if(yrange.min() > 0) yrange.setmin(0);
+}
 
-  cout << xtick_spacing << ", " << ytick_spacing << endl;
-  cout << xrange.min() << ", " << xrange.max() << ", " <<  yrange.min() << ", " <<  yrange.max() << endl;
+bool compareScatterYVar(const ScatterVars* a, const ScatterVars* b) {
+  return a->daty < b->daty;
+}
+
+double pctile(list<ScatterVars*>& vars, double pct) {
+  int element = (int)floor(pct * vars.size());
+  list<ScatterVars*>::const_iterator i;
+  int j;
+  for(j = 0, i = vars.begin(); j < element; ++i, ++j);
+  return (*i)->daty;
+}
+
+void calcPercentiles(list<ScatterVars*>& vars, list<LegendToken* >& leg_tokens) {
+  map<const string, list<ScatterVars*> > vars_by_ts;
+  list<ScatterVars*> s2020;
+  list<ScatterVars*> s2050;
+  list<ScatterVars*> s2080;
+  vars_by_ts["2020"] = s2020;
+  vars_by_ts["2050"] = s2050;
+  vars_by_ts["2080"] = s2080;
+
+  list<ScatterVars*>::const_iterator i;
+  for(i = vars.begin(); i != vars.end(); ++i) {
+    vars_by_ts[(*i)->timeslice].push_back(*i);
+  }
+
+  vars_by_ts["2020"].sort(compareScatterYVar);
+  vars_by_ts["2050"].sort(compareScatterYVar);
+  vars_by_ts["2080"].sort(compareScatterYVar);
+
+  LegendToken* tok[3];
+  tok[0] = new LegendToken("10th pctile", 0x00000000, DTRIANGLE, true);
+  tok[1] = new LegendToken("Median", 0x00000000, DIAMOND, true);
+  tok[2] = new LegendToken("90th pctile", 0x00000000, UTRIANGLE, true);
+  leg_tokens.push_back(tok[2]);
+  leg_tokens.push_back(tok[1]);
+  leg_tokens.push_back(tok[0]);
+
+  double percentiles[] = { 0.1, 0.5, 0.9 };
+  string years[] = { "2020", "2050", "2080" };
+  double yearsnum[] = { 2020, 2050, 2080 };
+  string desc[] = { "10th pctile", "Median", "90th pctile" };
+
+  for(int i = 0; i < 3; i++) {
+    for(int j = 0; j < 3; j++) {
+      ScatterVars* v = new ScatterVars(desc[i], "", years[j], "", "");
+      v->datx = yearsnum[j];
+      v->daty = pctile(vars_by_ts[years[j]], percentiles[i]);
+      v->symbol = tok[i];
+      vars.push_back(v);
+    }
+  }
 }
 
 enum GCMINFO_OFFSETS{MODEL_OFFSET, MODEL_COUNT, JUNK1, SERIES_OFFSET, MODELNAME_OFFSET, EXPT_OFFSET, S2020_OFFSET, S2050_OFFSET, S2080_OFFSET};
@@ -1005,7 +1080,11 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
   }
   xrange.setmin(2010);
   xrange.setmax(2090);
-
+  
+  if(dm.config.percentiles) {
+    calcPercentiles(vars, leg_tokens);
+  }
+  
   if(textOnly) {
     ofstream out(dm.config.outfile.c_str());
 
@@ -1099,7 +1178,7 @@ void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = fal
   for(count = 0; count < GCMINFO_COLS; ++count) {
     if((*beg)[count] == dm.config.xvariable)
       xvar_offset = count;
-    else if((*beg)[count] == dm.config.yvariable)
+    if((*beg)[count] == dm.config.yvariable)
       yvar_offset = count;
   }
   delete[] (*beg);
@@ -1112,7 +1191,7 @@ void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = fal
     string expt = (*beg)[EXPT_OFFSET];
     bool xvar_available = is_available((*beg)[xvar_offset]);
     bool yvar_available = is_available((*beg)[yvar_offset]);
-    bool ts_available = ts.end() != ts.find(dm.timeslice) && is_available((*beg)[ts[dm.timeslice]]);
+    bool ts_available = dm.timeslice == "1961_1990" || (ts.end() != ts.find(dm.timeslice) && is_available((*beg)[ts[dm.timeslice]]));
 
     if(xvar_available && yvar_available && ts_available && (dm.config.scenario_set == "" || dm.config.scenario_set == (*beg)[SERIES_OFFSET])) {
       ScatterVars* v = new ScatterVars(model, expt, dm.timeslice, dm.config.xvariable, dm.config.yvariable);
@@ -1201,7 +1280,7 @@ int main(int argc, char ** argv) {
   Displayer disp;
   DataManager dm(c);
 
-  ConfigFile cf("genimage.cfg");
+  ConfigFile cf("/usr/local/etc/genimage.cfg");
 
   cf.readInto(c.gcminfofile, "gcminfofile");
   cf.readInto(c.fontfile, "fontfile");

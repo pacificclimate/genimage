@@ -220,6 +220,8 @@ void Canvas::drawSymbol(enum SYMBOL s, int x, int y) {
   case CIRCLE:
     gdImageArc(img, x + 5, y + 5, 9, 9, 0, 360, colour);
     break;
+  case NONE:
+    break;
   }
 }
 
@@ -260,6 +262,8 @@ void Canvas::fillSymbol(enum SYMBOL s, int x, int y) {
     break;
   case CIRCLE:
     gdImageFilledEllipse(img, x + 5, y + 5, 9, 9, colour);
+    break;
+  case NONE:
     break;
   }
 }

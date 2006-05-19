@@ -67,12 +67,12 @@ gdImagePtr DataManager::get_basemap() {
   FILE* infile;
   infile = fopen(s.str().c_str(), "rb");
   if(!infile) {
-    cerr << "Couldn't read map file!\n";
+    cerr << "Couldn't read map file: " << s.str() << "\n";
     exit(1);
   }
   gdImagePtr image = gdImageCreateFromPng(infile);
   if(!image) {
-    cerr << "Couldn't load map file!\n";
+    cerr << "Couldn't load map file: " << s.str() << "\n";
     exit(1);
   }
   fclose(infile);
@@ -228,7 +228,7 @@ void DataManager::open_datafile() {
   //cout << filename << endl;
   f = new NcFile((char*)filename.c_str());
   if(!f->is_valid()) {
-    cout << "File not valid... " << endl;
+    cout << "File not valid: " << filename << endl;
     exit(3);
   }
   rows = f->get_dim("rows");

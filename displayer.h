@@ -45,7 +45,6 @@ public:
     colour_map_rev = 0;
     x_text_spacing = 20;
     y_text_spacing = 10;
-    leg_dec_places = 1;
     range_dynamic = false;
     grid = false;
     c = 0;
@@ -62,7 +61,6 @@ public:
   int colour_map, colour_map_rev;
   int img_width, img_height;
   double x_text_spacing, y_text_spacing;
-  int leg_dec_places;
   double xrange_min, xrange_max;
   double yrange_min, yrange_max;
   std::string xaxis_text;

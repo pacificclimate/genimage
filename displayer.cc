@@ -82,7 +82,7 @@ void Displayer::setScatterOffsets() {
 
 // Copy basemap to map
 void Displayer::copyMap(const gdImagePtr basemap) {
-  c->copy(basemap, plot_offset_x, plot_offset_y, 0, 0, basemap->sx, basemap->sy);
+  c->copy(basemap, plot_offset_x + BORDER_WIDTH, plot_offset_y + BORDER_WIDTH, 0, 0, basemap->sx, basemap->sy);
 }
 
 #define LINE_HEIGHT 11
@@ -114,8 +114,10 @@ void Displayer::drawLegend(list<LegendToken* >& vars) {
       c->drawSymbol((*liter)->sym, x - 15, y);
     }
     c->colour = 0x00000000;
-    c->drawText((*liter)->name, x, y, Canvas::TOP, Canvas::LEFT);
-    y += LINE_HEIGHT;
+    if((*liter)->sym != NONE) {
+      c->drawText((*liter)->name, x, y, Canvas::TOP, Canvas::LEFT);
+      y += LINE_HEIGHT;
+    }
   }
 }
 
@@ -504,7 +506,7 @@ Legend* Displayer::getLegend(const Range& datarange) {
 void Displayer::drawScale(Legend& leg_colours) {
   // Generate the colour map
   int num_leg_segments = 10;
-  int leg_dec_places = this->leg_dec_places;
+  int leg_dec_places;
   int x, y;
 
   if(range_dynamic && colour_map == STEPWISE) {
@@ -597,6 +599,7 @@ void Displayer::drawCreditText() {
 
 bool Displayer::writePng(string filename) {
   FILE* f;
+  cout << filename << endl;
   f = fopen(filename.c_str(), "wb");
   if(!f) {
     cerr << "Could not open output file!\n";
