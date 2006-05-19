@@ -1086,13 +1086,13 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
   }
   
   if(textOnly) {
-    FILE* out = fopen(dm.config.outfile.c_str(), "r");
+    FILE* out = fopen(dm.config.outfile.c_str(), "w");
 
     if(out) {
       list<ScatterVars*>::iterator i = vars.begin();
       for(; i != vars.end(); i++) {
 	ScatterVars* s = *i;
-	fprintf(out, "\"%s %s\", %0.2f, %0.2f, %s, %0.6f,\n", s->model, s->expt, s->lon, s->lat, s->timeslice, s->daty);
+	fprintf(out, "%s %s,%0.2f,%0.2f,%s,%0.6f,\n", s->model.c_str(), s->expt.c_str(), s->lon, s->lat, s->timeslice.c_str(), s->daty);
       }      
       fclose(out);
     }
@@ -1208,13 +1208,13 @@ void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = fal
   }
 
   if(textOnly) {
-    FILE* out = fopen(dm.config.outfile.c_str(), "r");
+    FILE* out = fopen(dm.config.outfile.c_str(), "w");
 
     if(out) {
       list<ScatterVars*>::iterator i = vars.begin();
       for(; i != vars.end(); i++) {
 	ScatterVars* s = *i;
-	fprintf(out, "\"%s %s\", %0.2f, %0.2f, %0.6f, %0.6f,\n", s->model, s->expt, s->lon, s->lat, s->datx, s->daty);
+	fprintf(out, "%s %s,%0.2f,%0.2f,%0.6f,%0.6f,\n", s->model.c_str(), s->expt.c_str(), s->lon, s->lat, s->datx, s->daty);
       }      
       fclose(out);
     }
