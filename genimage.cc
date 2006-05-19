@@ -1086,24 +1086,15 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
   }
   
   if(textOnly) {
-    ofstream out(dm.config.outfile.c_str());
+    FILE* out = fopen(dm.config.outfile.c_str(), "r");
 
-    if(out.good()) {
+    if(out) {
       list<ScatterVars*>::iterator i = vars.begin();
       for(; i != vars.end(); i++) {
 	ScatterVars* s = *i;
-	out.fill('0');
-	out.precision(8);
-	out << s->model << " " << s->expt << ": (";
-	out.width(4);
-	out << s->lon << ")-(";
-	out.width(4);
-	out << s->lat << ")-(";
-	out << s->timeslice << ")-(";
-	out.width(6); 
-	out << s->daty << ")" << endl;
+	fprintf(out, "\"%s %s\", %0.2f, %0.2f, %s, %0.6f,\n", s->model, s->expt, s->lon, s->lat, s->timeslice, s->daty);
       }      
-      out.close();
+      fclose(out);
     }
   } else {
     // Set up the plot
@@ -1114,8 +1105,8 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
     // Clear the plot area, draw what we want to...
     disp.clearPlot();
     disp.drawScatterGrid(xrange, yrange);
-    disp.drawScatter(vars, xrange, yrange);
     disp.drawLines(vars, xrange, yrange);
+    disp.drawScatter(vars, xrange, yrange);
     
     // Draw tick marks, text labels, and title up X and Y axes
     disp.drawTicks(xrange, yrange);
@@ -1217,21 +1208,15 @@ void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = fal
   }
 
   if(textOnly) {
-    ofstream out(dm.config.outfile.c_str());
+    FILE* out = fopen(dm.config.outfile.c_str(), "r");
 
-    if(out.good()) {
+    if(out) {
       list<ScatterVars*>::iterator i = vars.begin();
       for(; i != vars.end(); i++) {
 	ScatterVars* s = *i;
-	out.fill('0');
-	out.precision(8);
-	out << s->model << " " << s->expt << ": (";
-	out.width(4);
-	out << s->lon << ")-(" << s->lat << ")-(";
-	out.width(8);
-	out << s->datx << ")-(" << s->daty << ")" << endl;
+	fprintf(out, "\"%s %s\", %0.2f, %0.2f, %0.6f, %0.6f,\n", s->model, s->expt, s->lon, s->lat, s->datx, s->daty);
       }      
-      out.close();
+      fclose(out);
     }
   } else {
     // Set up the plot
