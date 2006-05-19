@@ -980,10 +980,10 @@ void pctile(list<ScatterVars*>& vars, double pct, ScatterVars* v) {
 }
 
 void calcPercentiles(list<ScatterVars*>& vars, list<LegendToken* >& leg_tokens) {
-  const double percentiles[] = { 0.1, 0.5, 0.9 };
+  const double percentiles[] = { 0.9, 0.5, 0.1 };
   const string years[] = { "2020", "2050", "2080" };
-  const string desc[] = { "10th percentile", "Median", "90th percentile" };
-  const enum SYMBOL symbols[] = { DTRIANGLE, DIAMOND, UTRIANGLE };
+  const string desc[] = { "90th percentile", "Median", "10th percentile" };
+  const enum SYMBOL symbols[] = { UTRIANGLE, DIAMOND, DTRIANGLE };
 
   // Set up the list-map combination
   map<const string, list<ScatterVars*> > vars_by_ts;
