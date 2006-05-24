@@ -929,7 +929,7 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
 	(*vars_iter)->setXData(xdata_avg);
 	(*vars_iter)->setYData(ydata_avg);
       }
-      (*vars_iter)->setCoord(0, 0);
+      (*vars_iter)->setCoord(-999.0, -999.0);
     }
 
     last_expt = (*vars_iter)->expt;
@@ -1090,11 +1090,36 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
     FILE* out = fopen(dm.config.outfile.c_str(), "w");
 
     if(out) {
+      int j = 0;
+      string old = "";
       list<ScatterVars*>::iterator i = vars.begin();
+      fprintf(out, "Experiment,Latitude,Longitude,2020,2050,2080,");
       for(; i != vars.end(); i++) {
 	ScatterVars* s = *i;
-	fprintf(out, "%s %s,%0.2f,%0.2f,%s,%0.6f,\n", s->model.c_str(), s->expt.c_str(), s->lon, s->lat, s->timeslice.c_str(), s->daty);
+	if(old != s->model + s->expt) {
+	  // Make sure that the # of columns is right
+	  for(; j > 0; j--) {
+	    fprintf(out, ",");
+	  }
+
+	  // Clear everything and reset
+	  fprintf(out, "\n");
+	  j = 3;
+
+	  fprintf(out, "%s %s,%0.2f,%0.2f,", s->model.c_str(), s->expt.c_str(), s->lon, s->lat);
+	}
+	fprintf(out, "%0.6f,", s->daty);
+	old = s->model + s->expt;
+	j--;
       }      
+      // Make sure that the # of columns is right
+      for(; j > 0; j--) {
+	fprintf(out, ",");
+      }
+      
+      // Clear everything and reset
+      fprintf(out, "\n");
+
       fclose(out);
     }
   } else {
@@ -1213,6 +1238,7 @@ void handleScatterVariable(Displayer& disp, DataManager& dm, bool textOnly = fal
 
     if(out) {
       list<ScatterVars*>::iterator i = vars.begin();
+      fprintf(out, "Experiment,Longitude,Latitude,%s,%s,\n", dm.config.xvariable.c_str(), dm.config.yvariable.c_str());
       for(; i != vars.end(); i++) {
 	ScatterVars* s = *i;
 	fprintf(out, "%s %s,%0.2f,%0.2f,%0.6f,%0.6f,\n", s->model.c_str(), s->expt.c_str(), s->lon, s->lat, s->datx, s->daty);
