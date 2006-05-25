@@ -1044,9 +1044,10 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
   for(; beg != gcminfo.end(); ++beg) {
     string model = (*beg)[MODEL_OFFSET];
     string expt = (*beg)[EXPT_OFFSET];
+    bool ensemble = (expt.substr(2, 1) == "x");
     bool var_available = is_available((*beg)[var_offset]);
 
-    if(var_available && (dm.config.scenario_set == "" || dm.config.scenario_set == (*beg)[SERIES_OFFSET])) {
+    if(var_available && (dm.config.scenario_set == "" || dm.config.scenario_set == (*beg)[SERIES_OFFSET]) && !(dm.config.percentiles && ensemble)) {
       if(is_available((*beg)[S2020_OFFSET])) {
 	ScatterVars* v = new ScatterVars(model, expt, "2020", "", dm.config.yvariable);
 	v->setXData(2020);
