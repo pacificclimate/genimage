@@ -4,20 +4,22 @@
 
 using namespace std;
 
+enum OCEAN_DRAW_TYPE{DRAW_LAND=0, DRAW_ALL, DRAW_OCEAN};
+
 bool DataManager::get_drawmask(int* values, const int* slmask) {
   int datasize = data_size();
   switch(config.plot_over_ocean) {
-  case 2:
+  case DRAW_OCEAN:
     for(int i = 0; i < datasize; i++) {
       values[i] = !slmask[i];
     }
     break;
-  case 1:
+  case DRAW_ALL:
     for(int i = 0; i < datasize; i++) {
       values[i] = 1;
     }
     break;
-  case 0:
+  case DRAW_LAND:
     for(int i = 0; i < datasize; i++) {
       values[i] = slmask[i];
     }
@@ -50,7 +52,7 @@ bool DataManager::get_datamask(int* values, const int* slmask, const double* gri
 	double area = (grid_lats[i] - grid_lats[i + 1]) * (grid_longs[j + 1] - grid_longs[j]);
 	
 	// If coverage is less than 10%, throw this box out
-	values[(i * cols) + j] &= (r_grid[(i * cols) + j] / area > 0.10);
+	values[(i * cols) + j] &= (r_grid[(i * cols) + j] / area > threshold);
       }
     }
   }

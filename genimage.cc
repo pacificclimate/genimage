@@ -24,6 +24,7 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
   char val;
   Point* temp;
   list<Point* > lpoints;
+  list<Point* >::const_iterator lpoints_iter;
   char* optstring = "a:b:c:e:f:g:h:i:j:k:l:m:n:o:p:r:s:t:u:v:w:x:y:z:";
   static struct option options[] = {
     { "xrange-min", 1, 0, 'a'},
@@ -34,6 +35,7 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     { "identify-text", 1, 0, 'f'},
     { "ocean-plot", 1, 0, 'g'},
     { "scatter-type", 1, 0, 'h'},
+    { "box-threshold", 1, 0, 'i' },
     { "poly-point", 1, 0, 'j'},
     { "y-axis-text", 1, 0, 'k'},
     { "x-axis-text", 1, 0, 'l'},
@@ -93,10 +95,18 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
       // scatter-type
       c.scatter_type = atoi(optarg);
       break;
+    case 'i':
+      // box-threshold
+      dm.threshold = atof(optarg);
+      break;
     case 'j':
       // poly-point
       temp = parse_data_point(optarg);
       if(temp) {
+	// Check for duplicate points in the list of points; if so, barf
+	for(lpoints_iter = lpoints.begin(); lpoints_iter != lpoints.end(); lpoints_iter++) {
+	  assert(!(fabs((*lpoints_iter)->x - temp->x) < 1e-12 && fabs((*lpoints_iter)->y - temp->y) < 1e-12));
+	}
 	lpoints.push_back(temp);
       }
       break;
@@ -173,7 +183,6 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
   c.numpoints = lpoints.size();
   c.points = 0;
   if(c.numpoints) {
-    list<Point* >::const_iterator lpoints_iter;
     int i = 0;
     c.points = new Point*[c.numpoints];
     for(lpoints_iter = lpoints.begin(); lpoints_iter != lpoints.end(); lpoints_iter++) {

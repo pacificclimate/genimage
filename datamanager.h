@@ -14,6 +14,7 @@ class DataManager {
     f = 0;
     timeofyear = 0;
     model = expt = timeslice = region = variable = "";
+    threshold = 0.10;
   }
   ~DataManager() {
     if(f) 
@@ -79,6 +80,8 @@ class DataManager {
 
   double minlat, maxlat, minlong, maxlong;
   double difflat, difflong;
+
+  double threshold;
 
 private:
   NcFile* f;
