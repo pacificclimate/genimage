@@ -43,7 +43,8 @@ public:
       max = data;
       maxlong = newlong;
       maxlat = newlat;
-    } else if(data < min) {
+    }
+    if(data < min) {
       min = data;
       minlong = newlong;
       minlat = newlat;
