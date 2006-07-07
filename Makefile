@@ -18,5 +18,8 @@ genimage: $(OBJS)
 	$(CXX) -c $(CXXFLAGS) $*.cc -o $*.o
 	$(CXX) -MM $(CXXFLAGS) $*.cc > $*.d
 
+install: genimage
+        sudo cp genimage /usr/local/bin/
+	
 clean: 
 	rm *.o genimage
