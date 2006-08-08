@@ -49,6 +49,7 @@ public:
     grid = false;
     c = 0;
     latlon_plot = true;
+    smooth = 0;
   }
   ~Displayer() {
     if(c)
@@ -79,6 +80,8 @@ public:
   int identify_offset_x, identify_offset_y;
   int xaxis_offset_x, xaxis_offset_y;
   int yaxis_offset_x, yaxis_offset_y;
+  
+  int smooth; // interpolate final result to a very high resolution grid
 
   // Sets offsets for map plots
   void setOffsets(const gdImagePtr basemap);

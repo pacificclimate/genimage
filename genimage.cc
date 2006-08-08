@@ -67,6 +67,7 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
       // xrange-min
       disp.xrange_min = atof(optarg);
       break;
+    { "smooth", 0, &disp.smooth, 1},
     case 'b':
       // X variable
       c.xvariable = optarg;
@@ -355,6 +356,36 @@ void handleText(Displayer& disp, DataManager& dm) {
   data_avg = data_sum / total_weight;
   
   if(dm.config.pct_change_data) {
+void handleSmoothMap(Displayer& disp, DataManager& dm) {
+  cerr << "Smoothing output (interpolating to a high res grid.)" << endl;
+  
+  dm.variable = dm.config.xvariable;
+  dm.open_datafile();
+
+  InterpDataManager interp_dm(dm);
+  interp_dm.open_datafile();
+    
+  double* src_lats = new double[dm.lats_size()];
+  double* src_longs = new double[dm.longs_size()];
+  dm.get_lats(src_lats);
+  dm.get_longs(src_longs);
+
+  InterpRect rect;
+  rect.dst_boxlong = 0.05;
+  rect.dst_boxlat = 0.05;
+  
+  rect.src_minlat = src_lats[dm.lats_size()-1];
+  rect.src_maxlat = src_lats[0];
+  
+  rect.src_minlong = src_longs[0];
+  rect.src_maxlong = src_longs[dm.longs_size()-1];
+  
+  interp_dm.set_interp_rect(rect);
+    
+  // Plot!
+  handleMap(disp, interp_dm);
+}
+
     base_data_avg = base_data_sum / total_weight;
   }
   
@@ -1365,3 +1396,10 @@ int main(int argc, char ** argv) {
     delete[] c.points;
   }
 }
+
+    
+    // WIP WIP WIP HACK
+    if (disp.smooth) {
+      handleSmoothMap(disp, dm);
+      break;
+    }
