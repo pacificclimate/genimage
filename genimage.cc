@@ -1403,3 +1403,5 @@ int main(int argc, char ** argv) {
       handleSmoothMap(disp, dm);
       break;
     }
+
+    dm.config.percentiles = true;
