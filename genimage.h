@@ -47,6 +47,7 @@ inline int nearest_offset(int size, double* data, double value) {
 
 inline double nearest(int size, double* data, double value) {
   return data[nearest_offset(size, data, value)];
+  TYPE_BOXPLOT_TIMESLICE_TEXT = 16,
 }
 
 inline int lontox(int max_x, double off_lon, double min_lon, double max_lon, double lon) {

@@ -1405,3 +1405,7 @@ int main(int argc, char ** argv) {
     }
 
     dm.config.percentiles = true;
+    
+  case TYPE_BOXPLOT_TIMESLICE_TEXT:
+    handleScatterTimeslice(disp, dm, true, true);
+    break;
