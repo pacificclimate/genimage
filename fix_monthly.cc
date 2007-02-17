@@ -118,6 +118,7 @@ int date2days_greg(int start_year, int start_month, int start_day) {
 
     return days;
 }
+
 // Convert a 365-day year-month-day date into days since 0000-01-01
 int date2days_365(int start_year, int start_month, int start_day) {
   return start_year * DAYS_1YR + noleap_days[start_month - 1] + (start_day - 1);
@@ -168,6 +169,10 @@ public:
     }
   }
 
+  ~FileRecord() {
+    delete f;
+  }
+
   void set_time_params() {
     if(!is_ok)
       return;
@@ -178,22 +183,37 @@ public:
       
       if((t = f->get_var("time"))) {
 	int start_year, start_month, start_day;
+	NcAtt* cal = t->get_att("calendar");
+	NcAtt* units = t->get_att("units");
+	char* ctype = cal->as_string(0);
+	char* calendar_start = units->as_string(0);
+	calendar_type = ctype;
 
-	calendar_type = t->get_att("calendar")->as_string(0);
-	string calendar_start = t->get_att("units")->as_string(0);
-	
 	// Load in the base month
-	if(sscanf(calendar_start.c_str(), "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
+	if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
 	  printf("Failure to match start date\n");
 	  return;
 	}
 
+	delete[] ctype;
+	delete[] calendar_start;
+	delete cal;
+	delete units;
 	start_day = date2days(calendar_type, start_year, start_month, start_day);
       }
     } else {
       timeless = true;
     }
   }
+  
+  bool operator==(const FileRecord& f) {
+    return (f.var == var) && (f.expt == expt) && (f.model == model) && (f.run == run);
+  }
+
+  bool operator!=(const FileRecord& f) {
+    return !(*this == f);
+  }
+
   string filename;
 
   string var;
@@ -227,11 +247,25 @@ public:
   
 };
 
+void emit_and_cleanup(list<FileRecord*>& l) {
+  string ofile;
+  list<FileRecord*>::const_iterator li;
+  printf("New group:\n");
+  for(li = l.begin(); li != l.end(); li++) {
+    FileRecord* f = *li;
+    ofile = f->expt + "/" + f->var + "/" + f->model + "/" + f->run + "/" + f->model + "-" + f->expt + "-" + f->var + "-" + f->run + ".nc";
+    printf("%s\n", f->filename.c_str());
+    delete f;
+  }
+  printf("Output file: %s\n", ofile.c_str());
+  l.clear();
+}
+
+
 int main(int argc, char** argv) {
-  NcFile* f;
   char buf[1024];
   list<FileRecord*> l;
-  list<FileRecord*>::const_iterator li;
+  FileRecord* oldfr = 0;
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   ncopts = NC_VERBOSE;
@@ -243,22 +277,16 @@ int main(int argc, char** argv) {
 
     if(!fr->is_ok) {
       printf("Failed to open file %s\n", buf);
-      delete f;
+      delete fr;
       continue;
     }
 
     // Do stuff
-
-    delete f;
+    if(oldfr && *fr != *oldfr) {
+      emit_and_cleanup(l);
+    }
     l.push_back(fr);
+    oldfr = fr;
   }
-
-
-  for(li = l.begin(); li != l.end(); li++) {
-    FileRecord* fr = *li;
-
-    printf("%s,%s,%s,%s,%s,", fr->filename.c_str(), fr->model.c_str(), fr->expt.c_str(), fr->var.c_str(), fr->run.c_str());
-
-    delete fr;
-  }
+  emit_and_cleanup(l);
 }
