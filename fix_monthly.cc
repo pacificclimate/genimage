@@ -248,14 +248,76 @@ public:
   int month;
   FileRecord& f;
 
-  // Need overloaded comparison operator
-  
+  // Should check more but this is adequate
+  bool operator==(const DataRecord& r) {
+    return (month == r.month && offset == r.offset);
+  }
+
+  bool operator<(const DataRecord& r) {
+    return (month < r.month);
+  }
 };
 
 void emit_and_cleanup(list<FileRecord*>& l) {
   string ofile;
   list<FileRecord*>::const_iterator li;
+  list<DataRecord*> drlist;
+  list<DataRecord*>::const_iterator di;
   printf("New group:\n");
+
+  for(li = l.begin(); li != l.end(); li++) {
+    FileRecord* f = *li;
+    NcVar* t;
+    NcVar* v;
+    if(!f->timeless) {
+      if(!(t = f->f->get_var("time"))) {
+	assert(false);
+      }
+      if(!(v = f->f->get_var(f->var.c_str()))) {
+	assert(false);
+      }
+      int i;
+      int len = t->get_dim(0)->size();
+      double* days = new double[len];
+      t->get(days, len);
+
+      for(i = 0; i < len; i++) {
+	//printf("Start day: %i, Day: %f\n", f->start_day, days[i]);
+	DataRecord* dr = new DataRecord(*(*li), v, i, get_total_months(f->calendar_type, (int)(f->start_day + days[i])));
+
+	drlist.push_back(dr);
+      }
+      delete[] days;
+    }
+  }
+  drlist.sort();
+
+  list<DataRecord*>::iterator dit_old;
+  list<DataRecord*>::iterator dit;
+  for(dit = drlist.begin(); dit != drlist.end(); dit++) {
+    if(dit != drlist.begin() && *(*dit_old) == *(*dit)) {
+      if((*dit_old)->f.corrected && !(*dit)->f.corrected) {
+	printf("Corrected record found!\n");
+	delete *dit;
+	dit = drlist.erase(dit);
+      } else if(!(*dit_old)->f.corrected && (*dit)->f.corrected) {
+	printf("Corrected record found!\n");
+	delete *dit_old;
+	dit_old = drlist.erase(dit_old);
+      } else {
+	// Duplicate record without one being a "corrected" record. Error.
+	printf("Duplicate record found!\n");
+	assert("" == "Duplicate record error");
+      }
+    }
+    dit_old = dit;
+  }
+
+  for(di = drlist.begin(); di != drlist.end(); di++) {
+    printf("File: %s, Month: %d\n", (*di)->f.filename.c_str(), (*di)->month);
+    delete *di;
+  }
+
   for(li = l.begin(); li != l.end(); li++) {
     FileRecord* f = *li;
     ofile = f->expt + "/" + f->var + "/" + f->model + "/" + f->run + "/" + f->model + "-" + f->expt + "-" + f->var + "-" + f->run + ".nc";
@@ -265,6 +327,7 @@ void emit_and_cleanup(list<FileRecord*>& l) {
 
   printf("Output file: %s\n", ofile.c_str());
   l.clear();
+  drlist.clear();
 }
 
 
