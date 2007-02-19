@@ -57,10 +57,10 @@ int get_gregorian_total_months(int days) {
   
   if(yrs == 0 && (yrs_4 != 0 || (yrs_4 == 0 && yrs_100 == 0))) { 
     // Leap
-    month = do_binary_search(days, 12, leap_days);
+    month = do_binary_search(days, 13, leap_days);
   } else {
     // No Leap
-    month = do_binary_search(days, 12, noleap_days);
+    month = do_binary_search(days, 13, noleap_days);
   }
   if(month < 0) {
     printf("Error: days value not within range!\n");
@@ -72,7 +72,7 @@ int get_gregorian_total_months(int days) {
 int get_365day_total_months(int days) {
   int remainder = days % DAYS_1YR;
   int year = days / DAYS_1YR;
-  int month = do_binary_search(remainder, 12, noleap_days);
+  int month = do_binary_search(remainder, 13, noleap_days);
   if(month < 0) {
     printf("Error: days value not within range!\n");
   }
@@ -82,7 +82,7 @@ int get_365day_total_months(int days) {
 int get_360day_total_months(int days) {
   int remainder = days % 360;
   int year = days / 360;
-  int month = do_binary_search(remainder, 12, equal_days);
+  int month = do_binary_search(remainder, 13, equal_days);
   if(month < 0) {
     printf("Error: days value not within range!\n");
   }
@@ -187,6 +187,7 @@ public:
 	NcAtt* units = t->get_att("units");
 	char* ctype = cal->as_string(0);
 	char* calendar_start = units->as_string(0);
+
 	calendar_type = ctype;
 
 	// Load in the base month
