@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <boost/tokenizer.hpp>
+#include <boost/shared_ptr.hpp>
 
 using namespace std;
 using namespace boost;
@@ -146,9 +147,7 @@ int date2days(string calendar_type, int start_year, int start_month, int start_d
 class FileRecord {
 public:
 
-  FileRecord(string filename) {
-    this->filename = filename;
-    f = new NcFile(filename.c_str(), NcFile::ReadOnly);
+  FileRecord(string filename): filename(filename), f(new NcFile(filename.c_str(), NcFile::ReadOnly)) {
     is_ok = f->is_valid();
 
     if(is_ok) {
@@ -167,10 +166,6 @@ public:
       
       set_time_params();
     }
-  }
-
-  ~FileRecord() {
-    delete f;
   }
 
   void set_time_params() {
@@ -226,7 +221,7 @@ public:
   string model;
   string run;
 
-  NcFile* f;
+  shared_ptr<NcFile> f;
   bool corrected;
   bool timeless;
 
@@ -258,22 +253,22 @@ public:
   }
 };
 
-void emit_and_cleanup(list<FileRecord*>& l) {
+void emit_and_cleanup(list<FileRecord>& l) {
   string ofile;
-  list<FileRecord*>::const_iterator li;
-  list<DataRecord*> drlist;
-  list<DataRecord*>::const_iterator di;
+  list<FileRecord>::iterator li;
+  list<DataRecord> drlist;
+  list<DataRecord>::const_iterator di;
   printf("New group:\n");
 
   for(li = l.begin(); li != l.end(); li++) {
-    FileRecord* f = *li;
+    FileRecord& f = *li;
     NcVar* t;
     NcVar* v;
-    if(!f->timeless) {
-      if(!(t = f->f->get_var("time"))) {
+    if(!f.timeless) {
+      if(!(t = f.f->get_var("time"))) {
 	assert(false);
       }
-      if(!(v = f->f->get_var(f->var.c_str()))) {
+      if(!(v = f.f->get_var(f.var.c_str()))) {
 	assert(false);
       }
       int i;
@@ -283,7 +278,7 @@ void emit_and_cleanup(list<FileRecord*>& l) {
 
       for(i = 0; i < len; i++) {
 	//printf("Start day: %i, Day: %f\n", f->start_day, days[i]);
-	DataRecord* dr = new DataRecord(*(*li), v, i, get_total_months(f->calendar_type, (int)(f->start_day + days[i])));
+	DataRecord dr(*li, v, i, get_total_months(f.calendar_type, (int)(f.start_day + days[i])));
 
 	drlist.push_back(dr);
       }
@@ -292,37 +287,38 @@ void emit_and_cleanup(list<FileRecord*>& l) {
   }
   drlist.sort();
 
-  list<DataRecord*>::iterator dit_old;
-  list<DataRecord*>::iterator dit;
-  for(dit = drlist.begin(); dit != drlist.end(); dit++) {
-    if(dit != drlist.begin() && *(*dit_old) == *(*dit)) {
-      if((*dit_old)->f.corrected && !(*dit)->f.corrected) {
-	printf("Corrected record found!\n");
-	delete *dit;
+  list<DataRecord>::iterator dit, old;
+  dit = drlist.begin();
+  ++dit;
+  old = drlist.begin();
+  for(; dit != drlist.end();) {
+    if((*old).month == (*dit).month) {
+      if((*old).f.corrected && !(*dit).f.corrected) {
+	//printf("Corrected record found: 1!\n");
 	dit = drlist.erase(dit);
-      } else if(!(*dit_old)->f.corrected && (*dit)->f.corrected) {
-	printf("Corrected record found!\n");
-	delete *dit_old;
-	dit_old = drlist.erase(dit_old);
+      } else if(!(*old).f.corrected && (*dit).f.corrected) {
+	//printf("Corrected record found: 2!\n");
+	old = drlist.erase(old);
+	++dit;
       } else {
 	// Duplicate record without one being a "corrected" record. Error.
 	printf("Duplicate record found!\n");
-	assert("" == "Duplicate record error");
+	assert(0 && "Duplicate record error");
       }
+      continue;
     }
-    dit_old = dit;
+    ++dit;
+    ++old;
   }
 
-  for(di = drlist.begin(); di != drlist.end(); di++) {
-    printf("File: %s, Month: %d\n", (*di)->f.filename.c_str(), (*di)->month);
-    delete *di;
-  }
+  //for(di = drlist.begin(); di != drlist.end(); di++) {
+  //  printf("File: %s, Month: %d\n", (*di).f.filename.c_str(), (*di).month);
+  //}
 
   for(li = l.begin(); li != l.end(); li++) {
-    FileRecord* f = *li;
-    ofile = f->expt + "/" + f->var + "/" + f->model + "/" + f->run + "/" + f->model + "-" + f->expt + "-" + f->var + "-" + f->run + ".nc";
-    printf("%s\n", f->filename.c_str());
-    delete f;
+    FileRecord& f = *li;
+    ofile = f.expt + "/" + f.var + "/" + f.model + "/" + f.run + "/" + f.model + "-" + f.expt + "-" + f.var + "-" + f.run + ".nc";
+    printf("%s\n", f.filename.c_str());
   }
 
   printf("Output file: %s\n", ofile.c_str());
@@ -330,11 +326,9 @@ void emit_and_cleanup(list<FileRecord*>& l) {
   drlist.clear();
 }
 
-
 int main(int argc, char** argv) {
   char buf[1024];
-  list<FileRecord*> l;
-  FileRecord* oldfr = 0;
+  list<FileRecord> l;
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   ncopts = NC_VERBOSE;
@@ -342,20 +336,20 @@ int main(int argc, char** argv) {
   while(fgets(buf, 1024, stdin)) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
-    FileRecord* fr = new FileRecord(buf);
+    FileRecord fr(buf);
 
-    if(!fr->is_ok) {
+    if(!fr.is_ok) {
       printf("Failed to open file %s\n", buf);
-      delete fr;
       continue;
     }
 
-    // Do stuff
-    if(oldfr && *fr != *oldfr) {
-      emit_and_cleanup(l);
+    if(l.size()) {
+      const FileRecord& oldfr = l.back();
+      if(fr != oldfr) {
+	emit_and_cleanup(l);
+      }
     }
     l.push_back(fr);
-    oldfr = fr;
   }
   emit_and_cleanup(l);
 }
