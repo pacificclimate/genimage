@@ -253,13 +253,174 @@ public:
   }
 };
 
-void emit_and_cleanup(list<FileRecord>& l) {
-  string ofile;
-  list<FileRecord>::iterator li;
-  list<DataRecord> drlist;
-  list<DataRecord>::const_iterator di;
-  printf("New group:\n");
+void copy_att(NcAtt* src, NcVar* dst) {
+  NcValues* values = src->values();
+  int num_vals = src->num_vals();
+  
+  // So braindead
+  // Copy the attribute's contents to a temporary and add the attribute to the new output variable
+  switch(src->type()) {
+  case ncByte:
+  case ncChar:
+    {
+      char data[num_vals];
+      for(int j = 0; j < num_vals; j++) {
+	data[j] = values->as_char(j);
+      }
+      dst->add_att(src->name(), num_vals, data);
+    }
+    break;
+  case ncShort:
+    {
+      short data[num_vals];
+      for(int j = 0; j < num_vals; j++) {
+	data[j] = values->as_short(j);
+      }
+      dst->add_att(src->name(), num_vals, data);
+    }
+    break;
+  case ncLong:
+    {
+      long data[num_vals];
+      for(int j = 0; j < num_vals; j++) {
+	data[j] = values->as_int(j);
+      }
+      dst->add_att(src->name(), num_vals, data);
+    }
+    break;
+  case ncFloat:
+    {
+      float data[num_vals];
+      for(int j = 0; j < num_vals; j++) {
+	data[j] = values->as_float(j);
+      }
+      dst->add_att(src->name(), num_vals, data);
+    }
+    break;
+  case ncDouble:
+    {
+      double data[num_vals];
+      for(int j = 0; j < num_vals; j++) {
+	data[j] = values->as_double(j);
+      }
+      dst->add_att(src->name(), num_vals, data);
+    }
+    break;
+  }
 
+  delete values;
+}
+
+void copy_atts(NcVar* src, NcVar* dst) {
+  // Copy attributes
+  int num_atts = src->num_atts();
+  for(int i = 0; i < num_atts; i++) {
+    NcAtt* att = src->get_att(i);
+    
+    copy_att(att, dst);
+
+    delete att;
+  }
+}
+
+void populate_dimvec(NcVar* src, NcFile& dst, vector<NcDim*>& dims) {
+  int num_dims = src->num_dims();
+  for(int i = 0; i < num_dims; i++) {
+    const string dimname = src->get_dim(i)->name();
+    NcDim* d = dst.get_dim(dimname.c_str());
+    assert(d);
+    dims.push_back(d);
+  }
+}
+
+// Fancy way:
+// Recurse until 2 or less values; then copy that thing, adding it to the next layer... or somethin
+
+// Simple way: Just copy the values
+template <typename T> void copy_var_values(NcVar* src, NcVar* dst, T* temporary) {
+  long* edges = src->edges();
+
+  assert(src->get(temporary, edges));
+  assert(dst->put(temporary, edges));
+
+  delete[] edges;
+}
+
+NcVar* copy_var_structure(NcVar* src, NcFile& dst) {
+  // Get dimensions to use
+  vector<NcDim*> dims;
+  populate_dimvec(src, dst, dims);
+  
+  // Create output variable
+  return dst.add_var(src->name(), src->type(), dims.size(), (const NcDim**)&dims[0]);
+}
+
+template <typename T> NcVar* copy_var_t(NcVar* src, NcFile& dst, T* temporary = 0) {
+  NcVar* dstvar = copy_var_structure(src, dst);
+  copy_atts(src, dstvar);
+  if(!temporary) {
+    temporary = new T[src->num_vals()];
+    copy_var_values<T>(src, dstvar, temporary);
+    delete[] temporary;
+  } else {
+    copy_var_values<T>(src, dstvar, temporary);
+  }
+
+  return dstvar;
+}
+
+NcVar* copy_var(NcVar* src, NcFile& dst) {
+  switch(src->type()) {
+  case ncByte:
+  case ncChar:
+    return copy_var_t<char>(src, dst);
+    break;
+  case ncShort:
+    return copy_var_t<short>(src, dst);
+    break;
+  case ncLong:
+    return copy_var_t<long>(src, dst);
+    break;
+  case ncFloat:
+    return copy_var_t<float>(src, dst);
+    break;
+  case ncDouble:
+    return copy_var_t<double>(src, dst);
+    break;
+  default:
+    return 0;
+  }
+}
+
+void remove_dups(list<DataRecord>& drlist) {
+  drlist.sort();
+  list<DataRecord>::iterator dit, old;
+  dit = drlist.begin();
+  ++dit;
+  old = drlist.begin();
+  for(; dit != drlist.end();) {
+    if((*old).month == (*dit).month) {
+      if((*old).f.corrected && !(*dit).f.corrected) {
+	//printf("Corrected record found: 1!\n");
+	dit = drlist.erase(dit);
+      } else if(!(*old).f.corrected && (*dit).f.corrected) {
+	//printf("Corrected record found: 2!\n");
+	old = drlist.erase(old);
+	++dit;
+      } else {
+	// Duplicate record without one being a "corrected" record. Error.
+	printf("Duplicate record found!\n");
+	assert(0 && "Duplicate record error");
+      }
+      continue;
+    }
+    ++dit;
+    ++old;
+  }
+}
+
+void populate_drlist(list<FileRecord>& l, list<DataRecord>& drlist) {
+  list<FileRecord>::iterator li;
   for(li = l.begin(); li != l.end(); li++) {
     FileRecord& f = *li;
     NcVar* t;
@@ -285,41 +446,52 @@ void emit_and_cleanup(list<FileRecord>& l) {
       delete[] days;
     }
   }
-  drlist.sort();
+}
 
-  list<DataRecord>::iterator dit, old;
-  dit = drlist.begin();
-  ++dit;
-  old = drlist.begin();
-  for(; dit != drlist.end();) {
-    if((*old).month == (*dit).month) {
-      if((*old).f.corrected && !(*dit).f.corrected) {
-	//printf("Corrected record found: 1!\n");
-	dit = drlist.erase(dit);
-      } else if(!(*old).f.corrected && (*dit).f.corrected) {
-	//printf("Corrected record found: 2!\n");
-	old = drlist.erase(old);
-	++dit;
-      } else {
-	// Duplicate record without one being a "corrected" record. Error.
-	printf("Duplicate record found!\n");
-	assert(0 && "Duplicate record error");
-      }
-      continue;
+void copy_dims(NcFile& src, NcFile& dst) {
+  // Copy the dimensions
+  for(int i = 0; i < src.num_dims(); i++) {
+    NcDim* d = src.get_dim(i);
+    NcDim* out;
+    if(d->is_unlimited()) {
+      out = dst.add_dim(d->name());
+    } else {
+      out = dst.add_dim(d->name(), d->size());
     }
-    ++dit;
-    ++old;
+    assert(out);
+  }
+}
+
+void emit_and_cleanup(list<FileRecord>& l) {
+  string ofile;
+
+  list<DataRecord> drlist;
+  populate_drlist(l, drlist);
+  remove_dups(drlist);
+
+  FileRecord& f = *(l.begin());
+  ofile = f.expt + "/" + f.var + "/" + f.model + "/" + f.run + "/" + f.model + "-" + f.expt + "-" + f.var + "-" + f.run + ".nc";
+
+  NcFile out(ofile.c_str(), NcFile::Replace);
+  NcFile& in = *(f.f);
+
+  assert(in.is_valid() && out.is_valid());
+
+  copy_dims(in, out);
+
+  // Copy some variables without any modifications
+  list<string> vars_to_copy;
+  list<string>::const_iterator v;
+  vars_to_copy.push_back("lat");
+  vars_to_copy.push_back("lat_bnds");
+  vars_to_copy.push_back("lon");
+  vars_to_copy.push_back("lon_bnds");
+  for(v = vars_to_copy.begin(); v != vars_to_copy.end(); ++v) {
+    copy_var(in.get_var((*v).c_str()), out);
   }
 
-  //for(di = drlist.begin(); di != drlist.end(); di++) {
-  //  printf("File: %s, Month: %d\n", (*di).f.filename.c_str(), (*di).month);
-  //}
-
-  for(li = l.begin(); li != l.end(); li++) {
-    FileRecord& f = *li;
-    ofile = f.expt + "/" + f.var + "/" + f.model + "/" + f.run + "/" + f.model + "-" + f.expt + "-" + f.var + "-" + f.run + ".nc";
-    printf("%s\n", f.filename.c_str());
-  }
+  // Special handling of time
+  // Need to set up the dimensions the same, 
 
   printf("Output file: %s\n", ofile.c_str());
   l.clear();
