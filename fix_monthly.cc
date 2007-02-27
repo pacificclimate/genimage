@@ -426,12 +426,8 @@ void populate_drlist(list<FileRecord>& l, list<DataRecord>& drlist) {
     NcVar* t;
     NcVar* v;
     if(!f.timeless) {
-      if(!(t = f.f->get_var("time"))) {
-	assert(false);
-      }
-      if(!(v = f.f->get_var(f.var.c_str()))) {
-	assert(false);
-      }
+      assert((t = f.f->get_var("time")));
+      assert((v = f.f->get_var(f.var.c_str())));
       int i;
       int len = t->get_dim(0)->size();
       double* days = new double[len];
@@ -473,6 +469,7 @@ void emit_and_cleanup(list<FileRecord>& l) {
   ofile = f.expt + "/" + f.var + "/" + f.model + "/" + f.run + "/" + f.model + "-" + f.expt + "-" + f.var + "-" + f.run + ".nc";
 
   NcFile out(ofile.c_str(), NcFile::Replace);
+  out.set_fill(NcFile::NoFill);
   NcFile& in = *(f.f);
 
   assert(in.is_valid() && out.is_valid());
@@ -492,6 +489,48 @@ void emit_and_cleanup(list<FileRecord>& l) {
 
   // Special handling of time
   // Need to set up the dimensions the same, 
+  vector<NcDim*> dims;
+  NcVar* intime = in.get_var("time");
+  populate_dimvec(intime, out, dims);
+  NcVar* outtime = out.add_var("time", ncInt, dims.size(), (const NcDim**)&dims[0]);
+  copy_atts(intime, outtime);
+  NcAtt* timeatt = outtime->get_att("units");
+  timeatt->rename("old_units");
+  delete timeatt;
+  outtime->add_att("units", "months since 0000-01");
+
+  // Create output variable and copy attributes
+  dims.clear();
+  NcVar* invar = in.get_var(f.var.c_str());
+  populate_dimvec(invar, out, dims);
+  NcVar* outvar = out.add_var(f.var.c_str(), ncDouble, dims.size(), (const NcDim**)&dims[0]);
+  copy_atts(invar, outvar);
+
+  // Run through the list of data bits
+  list<DataRecord>::const_iterator ts;
+  vector<int> months;
+  long* edges = invar->edges();
+  int recsize = edges[1] * edges[2];
+  float indata[recsize];
+  double outdata[recsize];
+  for(ts = drlist.begin(); ts != drlist.end(); ++ts) {
+    const DataRecord& d = *ts;
+    months.push_back(d.month);
+
+    // Add the data to the output variable
+    assert(d.v->set_cur(d.offset));
+    assert(d.v->get(indata, 1, edges[1], edges[2]));
+    for(int i = 0; i < recsize; i++) {
+      outdata[i] = (double)indata[i];
+    }
+    assert(outvar->put(outdata, 1, edges[1], edges[2]));
+  }
+  delete[] edges;
+  
+  // Copy months
+  edges = intime->edges();
+  assert(outtime->put(&months[0], edges));
+  delete[] edges;
 
   printf("Output file: %s\n", ofile.c_str());
   l.clear();
