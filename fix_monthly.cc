@@ -480,6 +480,7 @@ void emit_and_cleanup(list<FileRecord>& l) {
   int num_vars = in.num_vars();
   for(int i = 0; i < num_vars; i++) {
     NcVar* v = in.get_var(i);
+    assert(v);
     string name = v->name();
     if(name == "time" || name == "time_bnds" || name == f.var)
       continue;
@@ -487,22 +488,28 @@ void emit_and_cleanup(list<FileRecord>& l) {
   }
 
   // Special handling of time
-  // Need to set up the dimensions the same, 
   vector<NcDim*> dims;
   NcVar* intime = in.get_var("time");
-  populate_dimvec(intime, out, dims);
-  NcVar* outtime = out.add_var("time", ncInt, dims.size(), (const NcDim**)&dims[0]);
-  copy_atts(intime, outtime);
-  NcAtt* timeatt = outtime->get_att("units");
-  timeatt->rename("old_units");
-  delete timeatt;
-  outtime->add_att("units", "months since 0000-01");
+  NcVar* outtime;
+  if(intime) {
+    populate_dimvec(intime, out, dims);
+    outtime = out.add_var("time", ncInt, dims.size(), (const NcDim**)&dims[0]);
+    assert(outtime);
+    copy_atts(intime, outtime);
+    NcAtt* timeatt = outtime->get_att("units");
+    assert(timeatt);
+    timeatt->rename("old_units");
+    delete timeatt;
+    outtime->add_att("units", "months since 0000-01");
+  }
 
   // Create output variable and copy attributes
   dims.clear();
   NcVar* invar = in.get_var(f.var.c_str());
+  assert(invar);
   populate_dimvec(invar, out, dims);
   NcVar* outvar = out.add_var(f.var.c_str(), ncFloat, dims.size(), (const NcDim**)&dims[0]);
+  assert(outvar);
   copy_atts(invar, outvar);
 
   // Construct the list of what to copy
@@ -519,6 +526,8 @@ void emit_and_cleanup(list<FileRecord>& l) {
   float* indata = new float[recsize];
   list<DataRecord>::const_iterator ts;
   vector<int> months;
+
+  // FIXME: Improve method of calculating output offset (use initial month?)
   int j = 0;
   for(ts = drlist.begin(); ts != drlist.end(); ++ts) {
     const DataRecord& d = *ts;
@@ -535,7 +544,9 @@ void emit_and_cleanup(list<FileRecord>& l) {
   delete[] edges;
   
   // Copy months
-  assert(outtime->put(&months[0], months.size()));
+  if(intime) {
+    assert(outtime->put(&months[0], months.size()));
+  }
 
   printf("Output file: %s\n", ofile.c_str());
   l.clear();
