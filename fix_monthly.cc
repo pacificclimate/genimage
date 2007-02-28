@@ -515,13 +515,19 @@ void emit_and_cleanup(list<FileRecord>& l) {
   // Construct the list of what to copy
   long* edges = invar->edges();
   int recsize = 1;
-  edges[0] = 1;
-  for(int i = 1; i < invar->num_dims(); i++) {
-    recsize *= edges[i];
+  if(invar->num_dims() == 1) {
+    assert(false);
+  } else if(invar->num_dims() == 2) {
+    recsize = edges[0] * edges[1];
+  } else {
+    edges[0] = 1;
+    for(int i = 1; i < invar->num_dims(); i++) {
+      recsize *= edges[i];
+    }
   }
 
   printf("recsize: %i, listsize: %i\n", recsize, drlist.size());
-
+  
   // Run through the list of data bits
   float* indata = new float[recsize];
   list<DataRecord>::const_iterator ts;
