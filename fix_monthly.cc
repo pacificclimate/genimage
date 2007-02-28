@@ -502,7 +502,7 @@ void emit_and_cleanup(list<FileRecord>& l) {
   dims.clear();
   NcVar* invar = in.get_var(f.var.c_str());
   populate_dimvec(invar, out, dims);
-  NcVar* outvar = out.add_var(f.var.c_str(), ncDouble, dims.size(), (const NcDim**)&dims[0]);
+  NcVar* outvar = out.add_var(f.var.c_str(), ncFloat, dims.size(), (const NcDim**)&dims[0]);
   copy_atts(invar, outvar);
 
   // Construct the list of what to copy
@@ -517,7 +517,6 @@ void emit_and_cleanup(list<FileRecord>& l) {
 
   // Run through the list of data bits
   float* indata = new float[recsize];
-  double* outdata = new double[recsize];
   list<DataRecord>::const_iterator ts;
   vector<int> months;
   int j = 0;
@@ -528,15 +527,11 @@ void emit_and_cleanup(list<FileRecord>& l) {
     // Add the data to the output variable
     assert(d.v->set_cur(d.offset));
     assert(d.v->get(indata, edges));
-    for(int i = 0; i < recsize; i++) {
-      outdata[i] = (double)indata[i];
-    }
     assert(outvar->set_cur(j));
-    assert(outvar->put(outdata, edges));
+    assert(outvar->put(indata, edges));
     j++;
   }
   delete[] indata;
-  delete[] outdata;
   delete[] edges;
   
   // Copy months
