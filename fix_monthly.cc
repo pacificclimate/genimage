@@ -477,14 +477,13 @@ void emit_and_cleanup(list<FileRecord>& l) {
   copy_dims(in, out);
 
   // Copy some variables without any modifications
-  list<string> vars_to_copy;
-  list<string>::const_iterator v;
-  vars_to_copy.push_back("lat");
-  vars_to_copy.push_back("lat_bnds");
-  vars_to_copy.push_back("lon");
-  vars_to_copy.push_back("lon_bnds");
-  for(v = vars_to_copy.begin(); v != vars_to_copy.end(); ++v) {
-    copy_var(in.get_var((*v).c_str()), out);
+  int num_vars = in.num_vars();
+  for(int i = 0; i < num_vars; i++) {
+    NcVar* v = in.get_var(i);
+    string name = v->name();
+    if(name == "time" || name == "time_bnds" || name == f.var)
+      continue;
+    copy_var(v, out);
   }
 
   // Special handling of time
@@ -506,32 +505,42 @@ void emit_and_cleanup(list<FileRecord>& l) {
   NcVar* outvar = out.add_var(f.var.c_str(), ncDouble, dims.size(), (const NcDim**)&dims[0]);
   copy_atts(invar, outvar);
 
+  // Construct the list of what to copy
+  long* edges = invar->edges();
+  int recsize = 1;
+  edges[0] = 1;
+  for(int i = 1; i < invar->num_dims(); i++) {
+    recsize *= edges[i];
+  }
+
+  printf("recsize: %i, listsize: %i\n", recsize, drlist.size());
+
   // Run through the list of data bits
+  float* indata = new float[recsize];
+  double* outdata = new double[recsize];
   list<DataRecord>::const_iterator ts;
   vector<int> months;
-  long* edges = invar->edges();
-  int recsize = edges[1] * edges[2];
-  float indata[recsize];
-  double outdata[recsize];
+  int j = 0;
   for(ts = drlist.begin(); ts != drlist.end(); ++ts) {
     const DataRecord& d = *ts;
     months.push_back(d.month);
 
     // Add the data to the output variable
     assert(d.v->set_cur(d.offset));
-    assert(d.v->get(indata, 1, edges[1], edges[2]));
+    assert(d.v->get(indata, edges));
     for(int i = 0; i < recsize; i++) {
       outdata[i] = (double)indata[i];
     }
-    assert(outvar->set_cur(d.offset));
-    assert(outvar->put(outdata, 1, edges[1], edges[2]));
+    assert(outvar->set_cur(j));
+    assert(outvar->put(outdata, edges));
+    j++;
   }
+  delete[] indata;
+  delete[] outdata;
   delete[] edges;
   
   // Copy months
-  edges = intime->edges();
-  assert(outtime->put(&months[0], edges));
-  delete[] edges;
+  assert(outtime->put(&months[0], months.size()));
 
   printf("Output file: %s\n", ofile.c_str());
   l.clear();
