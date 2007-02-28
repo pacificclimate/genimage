@@ -523,6 +523,7 @@ void emit_and_cleanup(list<FileRecord>& l) {
     for(int i = 0; i < recsize; i++) {
       outdata[i] = (double)indata[i];
     }
+    assert(outvar->set_cur(d.offset));
     assert(outvar->put(outdata, 1, edges[1], edges[2]));
   }
   delete[] edges;
