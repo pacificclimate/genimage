@@ -461,6 +461,19 @@ void copy_dims(NcFile& src, NcFile& dst) {
   }
 }
 
+void copy_double_to_float(NcVar* src, NcVar* dst, int bufsize, long* edges, double* indata, float* outdata) {
+    assert(src->get(indata, edges));
+    for(int i = 0; i < bufsize; i++) {
+      outdata[i] = (float)indata[i];
+    }
+    assert(dst->put(outdata, edges));
+}
+
+void copy_float_to_float(NcVar* src, NcVar* dst, int bufsize, long* edges, float* buf) {
+    assert(src->get(buf, edges));
+    assert(dst->put(buf, edges));
+}
+
 void emit_and_cleanup(list<FileRecord>& l) {
   string ofile;
 
@@ -530,7 +543,8 @@ void emit_and_cleanup(list<FileRecord>& l) {
   printf("recsize: %i, listsize: %i\n", recsize, drlist.size());
   
   // Run through the list of data bits
-  float* indata = new float[recsize];
+  float* fdata = new float[recsize];
+  double* ddata = new double[recsize];
   list<DataRecord>::const_iterator ts;
   vector<int> months;
 
@@ -542,12 +556,27 @@ void emit_and_cleanup(list<FileRecord>& l) {
 
     // Add the data to the output variable
     assert(d.v->set_cur(d.offset));
-    assert(d.v->get(indata, edges));
     assert(outvar->set_cur(j));
-    assert(outvar->put(indata, edges));
+
+    // Add the data to the output variable
+    switch(d.v->type()) {
+    case ncByte:
+    case ncChar:
+    case ncShort:
+    case ncLong:
+      assert(false);
+      break;
+    case ncFloat:
+      copy_float_to_float(d.v, outvar, recsize, edges, fdata);
+      break;
+    case ncDouble:
+      copy_double_to_float(d.v, outvar, recsize, edges, ddata, fdata);
+      break;
+    }
     j++;
   }
-  delete[] indata;
+  delete[] fdata;
+  delete[] ddata;
   delete[] edges;
   
   // Copy months
