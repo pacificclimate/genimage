@@ -425,9 +425,12 @@ void populate_drlist(list<FileRecord>& l, list<DataRecord>& drlist) {
     FileRecord& f = *li;
     NcVar* t;
     NcVar* v;
-    if(!f.timeless) {
+    assert((v = f.f->get_var(f.var.c_str())));
+    if(f.timeless) {
+      DataRecord dr(*li, v, 0, 0);
+      drlist.push_back(dr);
+    } else {
       assert((t = f.f->get_var("time")));
-      assert((v = f.f->get_var(f.var.c_str())));
       int i;
       int len = t->get_dim(0)->size();
       double* days = new double[len];
@@ -516,7 +519,7 @@ void emit_and_cleanup(list<FileRecord>& l) {
   long* edges = invar->edges();
   int recsize = 1;
   if(invar->num_dims() == 1) {
-    assert(false);
+    recsize = edges[0];
   } else if(invar->num_dims() == 2) {
     recsize = edges[0] * edges[1];
   } else {
