@@ -518,17 +518,15 @@ void emit_and_cleanup(list<FileRecord>& l) {
   // Construct the list of what to copy
   long* edges = invar->edges();
   int recsize = 1;
-  if(invar->num_dims() == 1) {
-    recsize = edges[0];
-  } else if(invar->num_dims() == 2) {
-    recsize = edges[0] * edges[1];
-  } else {
-    edges[0] = 1;
-    for(int i = 1; i < invar->num_dims(); i++) {
-      recsize *= edges[i];
+  for(int i = 0; i < invar->num_dims(); i++) {
+    NcDim* d = invar->get_dim(i);
+    assert(d);
+    string name = d->name();
+    if(name == "time") {
+      edges[i] = 1;
     }
+    recsize *= edges[i];
   }
-
   printf("recsize: %i, listsize: %i\n", recsize, drlist.size());
   
   // Run through the list of data bits
