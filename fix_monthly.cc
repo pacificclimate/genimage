@@ -1,5 +1,9 @@
 //#include <iostream>
 #include <netcdfcpp.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <string>
@@ -474,21 +478,42 @@ void copy_float_to_float(NcVar* src, NcVar* dst, int bufsize, long* edges, float
     assert(dst->put(buf, edges));
 }
 
-void emit_and_cleanup(list<FileRecord>& l) {
-  string ofile;
-
+void emit_and_cleanup(list<FileRecord>& l, string outpath) {
+  string path = outpath;
+  struct stat s;
   list<DataRecord> drlist;
+
+  FileRecord& f = *(l.begin());
+
   populate_drlist(l, drlist);
   remove_dups(drlist);
 
-  FileRecord& f = *(l.begin());
-  ofile = f.expt + "/" + f.var + "/" + f.model + "/" + f.run + "/" + f.model + "-" + f.expt + "-" + f.var + "-" + f.run + ".nc";
+  string ofile = f.model + "-" + f.expt + "-" + f.var + "-" + f.run + ".nc";
+
+  list<string>::const_iterator p;
+  list<string> pathbits;
+  pathbits.push_back(f.expt);
+  pathbits.push_back(f.var);
+  pathbits.push_back(f.model);
+  pathbits.push_back(f.run);
+
+  for(p = pathbits.begin(); p != pathbits.end(); ++p) {
+    path += "/" + *p;
+
+    // If directory in path doesn't exist, create it.
+    if(stat(path.c_str(), &s) != 0) {
+      mkdir(path.c_str(), 0777);
+    }
+  }
+
+  ofile = path + "/" + ofile;
 
   NcFile out(ofile.c_str(), NcFile::Replace);
-  out.set_fill(NcFile::NoFill);
   NcFile& in = *(f.f);
 
   assert(in.is_valid() && out.is_valid());
+
+  out.set_fill(NcFile::NoFill);
 
   copy_dims(in, out);
 
@@ -596,6 +621,12 @@ int main(int argc, char** argv) {
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   ncopts = NC_VERBOSE;
 
+  if(argc < 2) {
+    printf("Usage: fix_missing <output_path>");
+  }
+
+  string output_path = argv[1];
+
   while(fgets(buf, 1024, stdin)) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
@@ -609,10 +640,10 @@ int main(int argc, char** argv) {
     if(l.size()) {
       const FileRecord& oldfr = l.back();
       if(fr != oldfr) {
-	emit_and_cleanup(l);
+	emit_and_cleanup(l, output_path);
       }
     }
     l.push_back(fr);
   }
-  emit_and_cleanup(l);
+  emit_and_cleanup(l, output_path);
 }
