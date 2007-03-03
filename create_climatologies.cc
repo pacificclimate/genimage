@@ -9,6 +9,7 @@
 #include <string>
 #include <list>
 #include <vector>
+#include <sstream>
 
 #include <boost/tokenizer.hpp>
 #include <boost/shared_ptr.hpp>
@@ -23,26 +24,40 @@ using namespace boost;
 #define DAYS_1EQYR 360
 #define DAYS_1YR 365
 
+#define MAX_TOY 17
+
+enum TIMESOFYEAR{JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC,DJF,MAM,JJA,SON,ANN};
+
 enum FILEBITS{DOT,EXPT,VAR,MODEL,RUN,FILENAME};
 const int noleap_days[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
 const int leap_days[] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
 const int equal_days[] = { 0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360 };
 
+const int noleap_dpm[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+const int leap_dpm[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+const int equal_dpm[] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
+
 int do_binary_search(int number, int max, const int array[]) {
   int min = 0;
+  int old_offset = 0;
   int offset = (min + max) / 2;
   max--;
   if(number < array[0] || number > array[max]) {
     return -1;
   }
-  while(array[offset] > number || array[offset + 1] < number) {
+  while(old_offset != offset && (array[offset] > number || array[offset + 1] < number)) {
     if(array[offset] < number) {
       min = (int)ceil((double)(max + min) / 2.0);
     } else {
       max = (int)floor((double)(max + min) / 2.0);
     }
+    old_offset = offset;
     offset = (max + min) / 2;
   }
+  if(array[offset] > number || array[offset + 1] < number) {
+    return -1;
+  }
+
   return offset;
 }
 
@@ -113,15 +128,15 @@ int date2days_greg(int start_year, int start_month, int start_day) {
   int noleap_years = start_year - leap_years;
   int days = leap_years * DAYS_1LPYR + noleap_years * DAYS_1YR + (start_day - 1);
   
-    if(start_year % 4 == 0 && (start_year % 100 != 0 || start_year % 400 == 0)) {
-      // Start year is a leap year
-      days += leap_days[start_month - 1];
-    } else {
-      // Start year is not a leap year
-      days += noleap_days[start_month - 1];
-    }
-
-    return days;
+  if(start_year % 4 == 0 && (start_year % 100 != 0 || start_year % 400 == 0)) {
+    // Start year is a leap year
+    days += leap_days[start_month - 1];
+  } else {
+    // Start year is not a leap year
+    days += noleap_days[start_month - 1];
+  }
+  
+  return days;
 }
 
 // Convert a 365-day year-month-day date into days since 0000-01-01
@@ -233,28 +248,6 @@ public:
   int start_day;
 
   bool is_ok;
-};
-
-class DataRecord {
-public:
-  DataRecord(FileRecord& f, NcVar* v, int offset, int month): f(f) {
-    this->v = v;
-    this->offset = offset;
-    this->month = month;
-  }
-  NcVar *v;
-  int offset;
-  int month;
-  FileRecord& f;
-
-  // Should check more but this is adequate
-  bool operator==(const DataRecord& r) {
-    return (month == r.month && offset == r.offset);
-  }
-
-  bool operator<(const DataRecord& r) {
-    return (month < r.month);
-  }
 };
 
 void copy_att(NcAtt* src, NcVar* dst) {
@@ -396,72 +389,21 @@ NcVar* copy_var(NcVar* src, NcFile& dst) {
   }
 }
 
-void remove_dups(list<DataRecord>& drlist) {
-  drlist.sort();
-  list<DataRecord>::iterator dit, old;
-  dit = drlist.begin();
-  ++dit;
-  old = drlist.begin();
-  for(; dit != drlist.end();) {
-    if((*old).month == (*dit).month) {
-      if((*old).f.corrected && !(*dit).f.corrected) {
-	//printf("Corrected record found: 1!\n");
-	dit = drlist.erase(dit);
-      } else if(!(*old).f.corrected && (*dit).f.corrected) {
-	//printf("Corrected record found: 2!\n");
-	old = drlist.erase(old);
-	++dit;
-      } else {
-	// Duplicate record without one being a "corrected" record. Error.
-	printf("Duplicate record found!\n");
-	assert(0 && "Duplicate record error");
-      }
-      continue;
-    }
-    ++dit;
-    ++old;
+template<typename T> NcDim* copy_dim(NcFile& src, NcFile& dst, T dim) {
+  NcDim* d = src.get_dim(dim);
+  NcDim* out;
+  if(d->is_unlimited()) {
+    out = dst.add_dim(d->name());
+  } else {
+    out = dst.add_dim(d->name(), d->size());
   }
-}
-
-void populate_drlist(list<FileRecord>& l, list<DataRecord>& drlist) {
-  list<FileRecord>::iterator li;
-  for(li = l.begin(); li != l.end(); li++) {
-    FileRecord& f = *li;
-    NcVar* t;
-    NcVar* v;
-    assert((v = f.f->get_var(f.var.c_str())));
-    if(f.timeless) {
-      DataRecord dr(*li, v, 0, 0);
-      drlist.push_back(dr);
-    } else {
-      assert((t = f.f->get_var("time")));
-      int i;
-      int len = t->get_dim(0)->size();
-      double* days = new double[len];
-      t->get(days, len);
-
-      for(i = 0; i < len; i++) {
-	//printf("Start day: %i, Day: %f\n", f->start_day, days[i]);
-	DataRecord dr(*li, v, i, get_total_months(f.calendar_type, (int)(f.start_day + days[i])));
-
-	drlist.push_back(dr);
-      }
-      delete[] days;
-    }
-  }
+  return out;
 }
 
 void copy_dims(NcFile& src, NcFile& dst) {
   // Copy the dimensions
   for(int i = 0; i < src.num_dims(); i++) {
-    NcDim* d = src.get_dim(i);
-    NcDim* out;
-    if(d->is_unlimited()) {
-      out = dst.add_dim(d->name());
-    } else {
-      out = dst.add_dim(d->name(), d->size());
-    }
-    assert(out);
+    assert(copy_dim(src, dst, i));
   }
 }
 
@@ -473,9 +415,34 @@ void copy_double_to_float(NcVar* src, NcVar* dst, int bufsize, long* edges, doub
     assert(dst->put(outdata, edges));
 }
 
-void copy_float_to_float(NcVar* src, NcVar* dst, int bufsize, long* edges, float* buf) {
+void copy_double_to_double(NcVar* src, NcVar* dst, int bufsize, long* edges, double* buf) {
     assert(src->get(buf, edges));
     assert(dst->put(buf, edges));
+}
+
+template<class T> class Range {
+public:
+  Range(T min, T max): min(min), max(max) {
+  }
+  T min, max;
+};
+
+void add_to_grid(int size, float* input, float* accum) {
+  for(int i = 0; i < size; i++) {
+    accum[i] += input[i];
+  }
+}
+
+template <typename T> void divide_grid_by_scalar(int size, float* input, T scalar) {
+  for(int i = 0; i < size; i++) {
+    input[i] /= scalar;
+  }
+}
+
+template <typename T> void multiply_grid_by_scalar(int size, float* input, T scalar) {
+  for(int i = 0; i < size; i++) {
+    input[i] *= scalar;
+  }
 }
 
 int get_recsize_and_edges(NcVar* invar, long* edges) {
@@ -493,18 +460,9 @@ int get_recsize_and_edges(NcVar* invar, long* edges) {
   return recsize;
 }
 
-void emit_and_cleanup(list<FileRecord>& l, string outpath) {
+void create_climatology(FileRecord& f, string outpath, const Range<int>& r) {
   string path = outpath;
   struct stat s;
-  list<DataRecord> drlist;
-
-  FileRecord& f = *(l.begin());
-
-  populate_drlist(l, drlist);
-  remove_dups(drlist);
-
-  string ofile = f.model + "-" + f.expt + "-" + f.var + "-" + f.run + ".nc";
-
   list<string>::const_iterator p;
   list<string> pathbits;
   pathbits.push_back(f.expt);
@@ -521,7 +479,10 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
     }
   }
 
-  ofile = path + "/" + ofile;
+  stringstream sst;
+  sst << path << "/" << f.model << "-" << f.expt << "-" << f.var << "-" << f.run << "-" << (r.min / 12) << "-" << (r.max / 12) << ".nc";
+
+  string ofile = path + "/" + sst.str();
 
   NcFile out(ofile.c_str(), NcFile::Replace);
   NcFile& in = *(f.f);
@@ -532,8 +493,9 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
 
   copy_dims(in, out);
 
-  // Copy some variables without any modifications
+  // Copy vars
   int num_vars = in.num_vars();
+
   for(int i = 0; i < num_vars; i++) {
     NcVar* v = in.get_var(i);
     assert(v);
@@ -542,97 +504,128 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
       continue;
     copy_var(v, out);
   }
-
-  // Special handling of time
-  vector<NcDim*> dims;
-  NcVar* intime = in.get_var("time");
-  NcVar* outtime;
-  if(intime) {
-    populate_dimvec(intime, out, dims);
-    outtime = out.add_var("time", ncInt, dims.size(), (const NcDim**)&dims[0]);
-    assert(outtime);
-    copy_atts(intime, outtime);
-    NcAtt* timeatt = outtime->get_att("units");
-    assert(timeatt);
-    timeatt->rename("old_units");
-    delete timeatt;
-    outtime->add_att("units", "months since 0000-01");
-  }
-
-  // Create output variable and copy attributes
-  dims.clear();
+  
   NcVar* invar = in.get_var(f.var.c_str());
-  assert(invar);
-  populate_dimvec(invar, out, dims);
-  NcVar* outvar = out.add_var(f.var.c_str(), ncFloat, dims.size(), (const NcDim**)&dims[0]);
-  assert(outvar);
-  copy_atts(invar, outvar);
-
-  // Construct the list of what to copy
   long* edges = invar->edges();
-  int recsize = get_recsize_and_edges(invar, edges);
-  printf("recsize: %i, listsize: %i\n", recsize, drlist.size());
-  
-  // Run through the list of data bits
-  float* fdata = new float[recsize];
-  double* ddata = new double[recsize];
-  list<DataRecord>::const_iterator ts;
-  vector<int> months;
+  int rec_size = get_recsize_and_edges(invar, edges);
+  if(f.timeless) {
+    // Just copy the damned thing
+  } else {
+    // Do the averaging
+    
+    // Get time
+    NcVar* intime = in.get_var("time");
+    long* tedges = intime->edges();
+    int numtimes = intime->num_vals();
+    int times[numtimes];
+    intime->get(times, tedges);
+    delete tedges;
 
-  // FIXME: Improve method of calculating output offset (use initial month?)
-  int j = 0;
-  for(ts = drlist.begin(); ts != drlist.end(); ++ts) {
-    const DataRecord& d = *ts;
-    months.push_back(d.month);
+    // Allocate data
+    int days[MAX_TOY];
+    int data_size = rec_size * MAX_TOY;
+    float* data = new float[data_size];
 
-    // Add the data to the output variable
-    assert(d.v->set_cur(d.offset));
-    assert(outvar->set_cur(j));
-
-    // Add the data to the output variable
-    switch(d.v->type()) {
-    case ncByte:
-    case ncChar:
-    case ncShort:
-    case ncLong:
-      assert(false);
-      break;
-    case ncFloat:
-      copy_float_to_float(d.v, outvar, recsize, edges, fdata);
-      break;
-    case ncDouble:
-      copy_double_to_float(d.v, outvar, recsize, edges, ddata, fdata);
-      break;
+    // Clear data
+    for(int i = 0; i < data_size; i++) {
+      data[i] = 0;
     }
-    j++;
-  }
-  delete[] fdata;
-  delete[] ddata;
-  delete[] edges;
-  
-  // Copy months
-  if(intime) {
-    assert(outtime->put(&months[0], months.size()));
-  }
+    for(int i = 0; i < MAX_TOY; i++) {
+      days[i] = 0;
+    }
 
-  printf("Output file: %s\n", ofile.c_str());
-  l.clear();
-  drlist.clear();
+    // Loop over the data, starting from the start location
+    int start_offset = do_binary_search(r.min, numtimes, times);
+    assert(start_offset != -1);
+    float* indata = new float[invar->rec_size()];
+    for(int i = start_offset; times[i] <= r.max; i++) {
+      invar->set_cur(i);
+      invar->get(indata, edges);
+      int days_in_month;
+      int year = times[i] / 12;
+      int month = times[i] % 12;
+
+      // Get the right # of days for this month
+      if(f.calendar_type == "gregorian") {
+	if(year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) {
+	  // leap year
+	  days_in_month = leap_dpm[month];
+	} else {
+	  // not leap year
+	  days_in_month = noleap_dpm[month];
+	}
+      } else if(f.calendar_type == "365_day") {
+	days_in_month = noleap_dpm[month];
+      } else if(f.calendar_type == "360_day") {
+	days_in_month = equal_dpm[month];
+      } else {
+	assert(false);
+      }
+
+      // Multiply by # of days to give accumulated days of the mean in the month
+      multiply_grid_by_scalar(rec_size, indata, days_in_month);
+
+      // Do month
+      add_to_grid(rec_size, indata, data + (rec_size * month));
+      days[month] += days_in_month;
+    }
+
+    // Divide grids by # days
+    // WARNING: DOES NOT HANDLE MISSING VALUES
+    // FIXME BUG BUG BUG
+    // FIXME MAYBE USE DAYS OF MONTHS?
+    for(int i = JAN; i <= DEC; i++) {
+      divide_grid_by_scalar(rec_size, data + (rec_size * i), days[i]);
+      add_to_grid(rec_size, data + (rec_size * i), data + (rec_size * ANN));
+    }
+    add_to_grid(rec_size, data + (rec_size * DEC), data + (rec_size * DJF));
+    add_to_grid(rec_size, data + (rec_size * JAN), data + (rec_size * DJF));
+    add_to_grid(rec_size, data + (rec_size * FEB), data + (rec_size * DJF));
+    add_to_grid(rec_size, data + (rec_size * MAR), data + (rec_size * MAM));
+    add_to_grid(rec_size, data + (rec_size * APR), data + (rec_size * MAM));
+    add_to_grid(rec_size, data + (rec_size * MAY), data + (rec_size * MAM));
+    add_to_grid(rec_size, data + (rec_size * JUN), data + (rec_size * JJA));
+    add_to_grid(rec_size, data + (rec_size * JUL), data + (rec_size * JJA));
+    add_to_grid(rec_size, data + (rec_size * AUG), data + (rec_size * JJA));
+    add_to_grid(rec_size, data + (rec_size * SEP), data + (rec_size * SON));
+    add_to_grid(rec_size, data + (rec_size * OCT), data + (rec_size * SON));
+    add_to_grid(rec_size, data + (rec_size * NOV), data + (rec_size * SON));
+
+    divide_grid_by_scalar(rec_size, data + (rec_size * DJF), 3);
+    divide_grid_by_scalar(rec_size, data + (rec_size * MAM), 3);
+    divide_grid_by_scalar(rec_size, data + (rec_size * JJA), 3);
+    divide_grid_by_scalar(rec_size, data + (rec_size * SON), 3);
+    divide_grid_by_scalar(rec_size, data + (rec_size * ANN), 12);
+
+    // Finally throw the data into the output
+    // FIXME ACTUALLY DO THIS
+
+    delete[] edges;
+    delete[] indata;
+    delete[] data;
+  }
 }
 
 int main(int argc, char** argv) {
   char buf[1024];
-  list<FileRecord> l;
+  list<Range<int> > ranges;
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   ncopts = NC_VERBOSE;
 
   if(argc < 2) {
-    printf("Usage: fix_missing <output_path>");
+    printf("Usage: fix_missing <output_path> [<climatology start> <climatology end>...]");
   }
 
   string output_path = argv[1];
 
+  // First step: Accumulate the climatologies (provided on command line after filename)
+  for(int i = 2; i + 1 < argc; i += 2) {
+    Range<int> r(atoi(argv[i]), atoi(argv[i + 1]));
+    ranges.push_back(r);
+  }
+
+  // Second step: Read the files in, one by one; extract the climatologies
   while(fgets(buf, 1024, stdin)) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
@@ -643,13 +636,10 @@ int main(int argc, char** argv) {
       continue;
     }
 
-    if(l.size()) {
-      const FileRecord& oldfr = l.back();
-      if(fr != oldfr) {
-	emit_and_cleanup(l, output_path);
-      }
+    // Generate climatologies
+    list<Range<int> >::const_iterator i;
+    for(i = ranges.begin(); i != ranges.end(); i++) {
+      create_climatology(fr, output_path, *i);
     }
-    l.push_back(fr);
   }
-  emit_and_cleanup(l, output_path);
 }
