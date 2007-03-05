@@ -257,7 +257,7 @@ public:
   }
 };
 
-void copy_att(NcAtt* src, NcVar* dst) {
+template <typename T> void copy_att(NcAtt* src, T* dst) {
   NcValues* values = src->values();
   int num_vals = src->num_vals();
   
@@ -315,7 +315,7 @@ void copy_att(NcAtt* src, NcVar* dst) {
   delete values;
 }
 
-void copy_atts(NcVar* src, NcVar* dst) {
+template <typename T> void copy_atts(T* src, T* dst) {
   // Copy attributes
   int num_atts = src->num_atts();
   for(int i = 0; i < num_atts; i++) {
@@ -531,6 +531,7 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
   out.set_fill(NcFile::NoFill);
 
   copy_dims(in, out);
+  copy_atts(&in, &out);
 
   // Copy some variables without any modifications
   int num_vars = in.num_vars();
