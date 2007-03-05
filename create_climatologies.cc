@@ -460,7 +460,7 @@ int get_recsize_and_edges(NcVar* invar, long* edges) {
   return recsize;
 }
 
-void create_climatology(FileRecord& f, string outpath, const Range<int>& r) {
+void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list<int>& omitlist) {
   string path = outpath;
   struct stat s;
   list<string>::const_iterator p;
@@ -528,7 +528,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r) {
 
     // Clear data
     for(int i = 0; i < data_size; i++) {
-      data[i] = 0;
+      data[i] = 0.0;
     }
     for(int i = 0; i < MAX_TOY; i++) {
       days[i] = 0;
@@ -538,12 +538,18 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r) {
     int start_offset = do_binary_search(r.min, numtimes, times);
     assert(start_offset != -1);
     float* indata = new float[invar->rec_size()];
+    list<int>::const_iterator omitted = omitlist.begin();
     for(int i = start_offset; times[i] <= r.max; i++) {
       invar->set_cur(i);
       invar->get(indata, edges);
       int days_in_month;
       int year = times[i] / 12;
       int month = times[i] % 12;
+
+      if(omitted != omitlist.end() && times[i] == *omitted) {
+	++omitted;
+	continue;
+      }
 
       // Get the right # of days for this month
       if(f.calendar_type == "gregorian") {
@@ -628,8 +634,19 @@ int main(int argc, char** argv) {
   // Second step: Read the files in, one by one; extract the climatologies
   while(fgets(buf, 1024, stdin)) {
     // Chomp a la perl
+    list<int> omitlist;
     *(strchr(buf, '\n')) = '\0';
-    FileRecord fr(buf);
+    string filename = buf;
+
+    // Split up input line into filename and omit bits
+    boost::char_separator<char> sep(",");
+    tokenizer<char_separator<char> > tok(filename, sep);
+    tokenizer<char_separator<char> >::const_iterator bits = tok.begin();
+    filename = *bits;
+    for(++bits; bits != tok.end(); ++bits) {
+      omitlist.push_back(atoi((*bits).c_str()));
+    }
+    FileRecord fr(filename.c_str());
 
     if(!fr.is_ok) {
       printf("Failed to open file %s\n", buf);
@@ -639,7 +656,7 @@ int main(int argc, char** argv) {
     // Generate climatologies
     list<Range<int> >::const_iterator i;
     for(i = ranges.begin(); i != ranges.end(); i++) {
-      create_climatology(fr, output_path, *i);
+      create_climatology(fr, output_path, *i, omitlist);
     }
   }
 }
