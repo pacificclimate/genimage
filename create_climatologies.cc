@@ -34,6 +34,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   out.set_fill(NcFile::NoFill);
 
   copy_dims(in, out);
+  copy_atts(&in, &out);
   NcDim* toy = out.add_dim("timeofyear", MAX_TOY);
   NcDim* lat = out.get_dim("lat");
   NcDim* lon = out.get_dim("lon");
@@ -49,27 +50,26 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
       continue;
     copy_var(v, out);
   }
-  
+
   NcVar* invar = in.get_var(f.var.c_str());
+  NcVar* outvar = out.add_var(invar->name(), invar->type(), toy, lat, lon);
+  copy_atts(invar, outvar);
   long* edges = invar->edges();
   int rec_size = get_recsize_and_edges(invar, edges);
+  int data_size = rec_size * MAX_TOY;
+  float* data = new float[data_size];
+  float* indata = new float[invar->rec_size()];
   if(f.timeless) {
+    invar->get(indata, edges);
     // Just copy the damned thing
+    for(int i = 0; i < MAX_TOY; i++) {
+      for(int j = 0; j < rec_size; j++) {
+	data[(i * rec_size) + j] = indata[j];
+      }
+    }
   } else {
     // Do the averaging
-    
-    // Get time
-    NcVar* intime = in.get_var("time");
-    long* tedges = intime->edges();
-    int numtimes = intime->num_vals();
-    int times[numtimes];
-    intime->get(times, tedges);
-    delete tedges;
-
-    // Allocate data
     int days[MAX_TOY];
-    int data_size = rec_size * MAX_TOY;
-    float* data = new float[data_size];
 
     // Clear data
     for(int i = 0; i < data_size; i++) {
@@ -79,10 +79,17 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
       days[i] = 0;
     }
 
+    // Get time
+    NcVar* intime = in.get_var("time");
+    long* tedges = intime->edges();
+    int numtimes = intime->num_vals();
+    int times[numtimes];
+    intime->get(times, tedges);
+    delete tedges;
+
     // Loop over the data, starting from the start location
     int start_offset = do_binary_search(r.min, numtimes, times);
     assert(start_offset != -1);
-    float* indata = new float[invar->rec_size()];
     list<int>::const_iterator omitted = omitlist.begin();
     for(int i = start_offset; times[i] <= r.max; i++) {
       invar->set_cur(i);
@@ -147,14 +154,18 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     divide_grid_by_scalar(rec_size, data + (rec_size * JJA), 3);
     divide_grid_by_scalar(rec_size, data + (rec_size * SON), 3);
     divide_grid_by_scalar(rec_size, data + (rec_size * ANN), 12);
-
-    // Finally throw the data into the output
-    // FIXME ACTUALLY DO THIS
-
-    delete[] edges;
-    delete[] indata;
-    delete[] data;
   }
+
+  
+  delete[] edges;
+
+  // Finally, throw the data into the output
+  edges = outvar->edges();
+  outvar->put(data, edges);
+
+  delete[] edges;
+  delete[] indata;
+  delete[] data;
 }
 
 int main(int argc, char** argv) {
