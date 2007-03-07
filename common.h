@@ -51,7 +51,7 @@ int do_binary_search(int number, int max, const int array[]) {
       max = (int)floor((double)(max + min) / 2.0);
     }
     old_offset = offset;
-    offset = (max + min) / 2;
+    offset = (int)round((double)(max + min) / 2.0);
   }
   if(array[offset] > number || array[offset + 1] < number) {
     return -1;
@@ -165,7 +165,7 @@ int date2days(string calendar_type, int start_year, int start_month, int start_d
 class FileRecord {
 public:
 
-  FileRecord(string filename): filename(filename), f(new NcFile(filename.c_str(), NcFile::ReadOnly)) {
+  FileRecord(string filename, bool do_time_calcs = true): filename(filename), f(new NcFile(filename.c_str(), NcFile::ReadOnly)) {
     is_ok = f->is_valid();
 
     if(is_ok) {
@@ -182,11 +182,11 @@ public:
       string fn = tokens[FILENAME];
       corrected = (fn.find("corrected") != string::npos);
       
-      set_time_params();
+      set_time_params(do_time_calcs);
     }
   }
 
-  void set_time_params() {
+  void set_time_params(bool do_time_calcs = true) {
     if(!is_ok)
       return;
 
@@ -207,17 +207,18 @@ public:
 	else if(calendar_type == "noleap")
 	  calendar_type = "365_day";
 
-	// Load in the base month
-	if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
-	  printf("Failure to match start date\n");
-	  return;
+	if(do_time_calcs) {
+	  // Load in the base month
+	  if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
+	    printf("Failure to match start date\n");
+	    return;
+	  }
+	this->start_day = date2days(calendar_type, start_year, start_month, start_day);
 	}
-
 	delete[] ctype;
 	delete[] calendar_start;
 	delete cal;
 	delete units;
-	this->start_day = date2days(calendar_type, start_year, start_month, start_day);
       }
     } else {
       timeless = true;
