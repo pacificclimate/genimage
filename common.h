@@ -325,6 +325,9 @@ template <typename T> void copy_att(NcAtt* src, T* dst) {
       dst->add_att(src->name(), num_vals, data);
     }
     break;
+  case ncNoType:
+    assert(false);
+    break;
   }
 
   delete values;
@@ -406,9 +409,10 @@ NcVar* copy_var(NcVar* src, NcFile& dst) {
   case ncDouble:
     return copy_var_t<double>(src, dst);
     break;
-  default:
+  case ncNoType:
     return 0;
   }
+  return 0;
 }
 
 template<typename T> NcDim* copy_dim(NcFile& src, NcFile& dst, T dim) {
