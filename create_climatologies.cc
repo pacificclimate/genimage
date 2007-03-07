@@ -22,14 +22,17 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   }
 
   stringstream sst;
-  sst << path << "/" << f.model << "-" << f.expt << "-" << f.var << "-" << f.run << "-" << (r.min / 12) << "-" << (r.max / 12) << ".nc";
+  sst << "/" << f.model << "-" << f.expt << "-" << f.var << "-" << f.run << "-" << (r.min / 12) << "-" << (r.max / 12) << ".nc";
 
   string ofile = path + "/" + sst.str();
 
   NcFile out(ofile.c_str(), NcFile::Replace);
   NcFile& in = *(f.f);
 
-  assert(in.is_valid() && out.is_valid());
+  printf("Output file: %s\n", ofile.c_str());
+
+  assert(in.is_valid());
+  assert(out.is_valid());
 
   out.set_fill(NcFile::NoFill);
 
@@ -59,7 +62,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   int data_size = rec_size * MAX_TOY;
   float* data = new float[data_size];
   float* indata = new float[invar->rec_size()];
-  if(f.timeless) {
+  if(!f.f->get_dim("time")) {
     invar->get(indata, edges);
     // Just copy the damned thing
     for(int i = 0; i < MAX_TOY; i++) {
@@ -85,11 +88,14 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     int numtimes = intime->num_vals();
     int times[numtimes];
     intime->get(times, tedges);
-    delete tedges;
+    delete[] tedges;
 
     // Loop over the data, starting from the start location
     int start_offset = do_binary_search(r.min, numtimes, times);
-    assert(start_offset != -1);
+    if(start_offset == -1) {
+      printf("Specified offsets are not within range of data set\n");
+      return;
+    }
     list<int>::const_iterator omitted = omitlist.begin();
     for(int i = start_offset; times[i] <= r.max; i++) {
       invar->set_cur(i);
@@ -155,7 +161,6 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     divide_grid_by_scalar(rec_size, data + (rec_size * SON), 3);
     divide_grid_by_scalar(rec_size, data + (rec_size * ANN), 12);
   }
-
   
   delete[] edges;
 
@@ -203,7 +208,7 @@ int main(int argc, char** argv) {
       
       omitlist.push_back(atoi((*bits).c_str()));
     }
-    FileRecord fr(filename.c_str());
+    FileRecord fr(filename.c_str(), false);
 
     if(!fr.is_ok) {
       printf("Failed to open file %s\n", buf);
