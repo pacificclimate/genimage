@@ -3,6 +3,26 @@
 #include "common.h"
 
 void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list<int>& omitlist) {
+  int numtimes, start_offset;
+  NcFile& in = *(f.f);
+  assert(in.is_valid());
+  int* times = 0;
+  // Get time
+  if(!f.timeless) {
+    NcVar* intime = in.get_var("time");
+    long* tedges = intime->edges();
+    numtimes = intime->num_vals();
+    times = new int[numtimes];
+    intime->get(times, tedges);
+    delete[] tedges;
+    
+    start_offset = do_binary_search(r.min, numtimes, times);
+    if(start_offset == -1 || start_offset + (r.max - r.min + 1) >= numtimes) {
+      printf("Specified offsets are not within range of data set\n");
+      return;
+    }
+  }
+
   string path = outpath;
   struct stat s;
   list<string>::const_iterator p;
@@ -27,11 +47,10 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   string ofile = path + "/" + sst.str();
 
   NcFile out(ofile.c_str(), NcFile::Replace);
-  NcFile& in = *(f.f);
-
+  
   printf("Output file: %s\n", ofile.c_str());
+  printf("Start: %i, End: %i, Max: %i\n", start_offset, start_offset + (r.max - r.min + 1), numtimes - 1);
 
-  assert(in.is_valid());
   assert(out.is_valid());
 
   out.set_fill(NcFile::NoFill);
@@ -62,7 +81,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   int data_size = rec_size * MAX_TOY;
   float* data = new float[data_size];
   float* indata = new float[invar->rec_size()];
-  if(!f.f->get_dim("time")) {
+  if(f.timeless) {
     invar->get(indata, edges);
     // Just copy the damned thing
     for(int i = 0; i < MAX_TOY; i++) {
@@ -82,24 +101,10 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
       days[i] = 0;
     }
 
-    // Get time
-    NcVar* intime = in.get_var("time");
-    long* tedges = intime->edges();
-    int numtimes = intime->num_vals();
-    int times[numtimes];
-    intime->get(times, tedges);
-    delete[] tedges;
-
-    // Loop over the data, starting from the start location
-    int start_offset = do_binary_search(r.min, numtimes, times);
-    if(start_offset == -1) {
-      printf("Specified offsets are not within range of data set\n");
-      return;
-    }
     list<int>::const_iterator omitted = omitlist.begin();
-    for(int i = start_offset; times[i] <= r.max; i++) {
-      invar->set_cur(i);
-      invar->get(indata, edges);
+    for(int i = start_offset; i < numtimes && times[i] <= r.max; i++) {
+      assert(invar->set_cur(i));
+      assert(invar->get(indata, edges));
       int days_in_month;
       int year = times[i] / 12;
       int month = times[i] % 12;
@@ -171,6 +176,8 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   delete[] edges;
   delete[] indata;
   delete[] data;
+  if(times)
+    delete[] times;
 }
 
 int main(int argc, char** argv) {
@@ -181,7 +188,7 @@ int main(int argc, char** argv) {
   ncopts = NC_VERBOSE;
 
   if(argc < 2) {
-    printf("Usage: fix_missing <output_path> [<climatology start> <climatology end>...]");
+    printf("Usage: create_climatologies <output_path> [<climatology start> <climatology end>...]");
   }
 
   string output_path = argv[1];
