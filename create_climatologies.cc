@@ -49,7 +49,9 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   NcFile out(ofile.c_str(), NcFile::Replace);
   
   printf("Output file: %s\n", ofile.c_str());
-  printf("Start: %i, End: %i, Max: %i\n", start_offset, start_offset + (r.max - r.min + 1), numtimes - 1);
+
+  if(!f.timeless)
+    printf("Start: %i, End: %i, Max: %i\n", start_offset, start_offset + (r.max - r.min + 1), numtimes - 1);
 
   assert(out.is_valid());
 
@@ -80,7 +82,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   int rec_size = get_recsize_and_edges(invar, edges);
   int data_size = rec_size * MAX_TOY;
   float* data = new float[data_size];
-  float* indata = new float[invar->rec_size()];
+  float* indata = new float[rec_size];
   if(f.timeless) {
     invar->get(indata, edges);
     // Just copy the damned thing
