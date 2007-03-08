@@ -3,7 +3,8 @@
 #include "common.h"
 
 void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list<int>& omitlist) {
-  int numtimes, start_offset;
+  int numtimes = 1;
+  int start_offset = 0;
   NcFile& in = *(f.f);
   assert(in.is_valid());
   int* times = 0;
@@ -17,8 +18,9 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     delete[] tedges;
     
     start_offset = do_binary_search(r.min, numtimes, times);
-    if(start_offset == -1 || start_offset + (r.max - r.min + 1) >= numtimes) {
-      printf("Specified offsets are not within range of data set\n");
+    if(start_offset == -1 || start_offset + (r.max - r.min) >= numtimes) {
+      printf("Specified offsets are not within range of data set: %i to %i, start is %i, max is %i\n", r.min, r.max, times[start_offset], times[numtimes - 1]);
+      delete[] times;
       return;
     }
   }

@@ -38,20 +38,40 @@ const int equal_dpm[] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
 
 int do_binary_search(int number, int max, const int array[]) {
   int min = 0;
-  int old_offset = 0;
-  int offset = (min + max) / 2;
   max--;
+  int offset = min + (max - min) / 2;
+  while(min <= max) {
+    if(array[offset] > number) {
+      max = offset - 1;
+    } else if(array[offset] < number) {
+      min = offset + 1;
+    } else {
+      return offset;
+    }
+    offset = min + (max - min) / 2;
+  }
+
+  return -1;
+}
+
+int find_slot_in_range(int number, int max, const int array[]) {
+  int min = 0;
+  int old_offset = 0;
+  max--;
+  int offset = min + (max - min) / 2;
   if(number < array[0] || number > array[max]) {
     return -1;
   }
   while(old_offset != offset && (array[offset] > number || array[offset + 1] < number)) {
-    if(array[offset] < number) {
-      min = (int)ceil((double)(max + min) / 2.0);
+    if(array[offset] > number) {
+      max = offset - 1;
+    } else if(array[offset] < number) {
+      min = offset + 1;
     } else {
-      max = (int)floor((double)(max + min) / 2.0);
+      return offset;
     }
     old_offset = offset;
-    offset = (int)round((double)(max + min) / 2.0);
+    offset = min + (max - min) / 2;
   }
   if(array[offset] > number || array[offset + 1] < number) {
     return -1;
