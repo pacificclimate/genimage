@@ -62,8 +62,6 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   copy_dims(in, out);
   copy_atts(&in, &out);
   NcDim* toy = out.add_dim("timeofyear", MAX_TOY);
-  NcDim* lat = out.get_dim("lat");
-  NcDim* lon = out.get_dim("lon");
 
   // Copy vars
   int num_vars = in.num_vars();
@@ -77,15 +75,20 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     copy_var(v, out);
   }
 
+  // Selectively copy variables so we get nice climatologies of zg, etc
   NcVar* invar = in.get_var(f.var.c_str());
-  NcVar* outvar = out.add_var(invar->name(), invar->type(), toy, lat, lon);
-  copy_atts(invar, outvar);
+
+  NcVar* outvar = 0;
   long* edges = invar->edges();
   int rec_size = get_recsize_and_edges(invar, edges);
   int data_size = rec_size * MAX_TOY;
   float* data = new float[data_size];
   float* indata = new float[rec_size];
   if(f.timeless) {
+    NcDim* lat = out.get_dim("lat");
+    NcDim* lon = out.get_dim("lon");
+    outvar = out.add_var(invar->name(), invar->type(), toy, lat, lon);
+    copy_atts(invar, outvar);
     invar->get(indata, edges);
     // Just copy the damned thing
     for(int i = 0; i < MAX_TOY; i++) {
@@ -94,6 +97,19 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
       }
     }
   } else {
+    // Copy the variable, replacing the "time" dimension with "time of year"
+    vector<NcDim*> dims;
+    populate_dimvec(invar, out, dims);
+    
+    for(unsigned int i = 0; i < dims.size(); i++) {
+      string dimname = dims[i]->name();
+      if(dimname == "time") {
+	dims[i] = toy;
+      }
+    }
+    outvar = out.add_var(invar->name(), invar->type(), dims.size(), (const NcDim**)&dims[0]);
+    copy_atts(invar, outvar);
+
     // Do the averaging
     int days[MAX_TOY];
 
