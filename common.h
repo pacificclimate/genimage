@@ -55,29 +55,12 @@ int do_binary_search(int number, int max, const int array[]) {
 }
 
 int find_slot_in_range(int number, int max, const int array[]) {
-  int min = 0;
-  int old_offset = 0;
-  max--;
-  int offset = min + (max - min) / 2;
-  if(number < array[0] || number > array[max]) {
-    return -1;
-  }
-  while(old_offset != offset && (array[offset] > number || array[offset + 1] < number)) {
-    if(array[offset] > number) {
-      max = offset - 1;
-    } else if(array[offset] < number) {
-      min = offset + 1;
-    } else {
-      return offset;
+  for(int i = 0; i < max - 1; i++) {
+    if(array[i] <= number && array[i + 1] > number) {
+      return i;
     }
-    old_offset = offset;
-    offset = min + (max - min) / 2;
   }
-  if(array[offset] > number || array[offset + 1] < number) {
-    return -1;
-  }
-
-  return offset;
+  return -1;
 }
 
 int get_gregorian_total_months(int days) {
@@ -96,10 +79,10 @@ int get_gregorian_total_months(int days) {
   
   if(yrs == 0 && (yrs_4 != 0 || (yrs_4 == 0 && yrs_100 == 0))) { 
     // Leap
-    month = do_binary_search(days, 13, leap_days);
+    month = find_slot_in_range(days, 13, leap_days);
   } else {
     // No Leap
-    month = do_binary_search(days, 13, noleap_days);
+    month = find_slot_in_range(days, 13, noleap_days);
   }
   if(month < 0) {
     printf("Error: days value not within range!\n");
@@ -111,7 +94,7 @@ int get_gregorian_total_months(int days) {
 int get_365day_total_months(int days) {
   int remainder = days % DAYS_1YR;
   int year = days / DAYS_1YR;
-  int month = do_binary_search(remainder, 13, noleap_days);
+  int month = find_slot_in_range(remainder, 13, noleap_days);
   if(month < 0) {
     printf("Error: days value not within range!\n");
   }
@@ -121,7 +104,7 @@ int get_365day_total_months(int days) {
 int get_360day_total_months(int days) {
   int remainder = days % 360;
   int year = days / 360;
-  int month = do_binary_search(remainder, 13, equal_days);
+  int month = find_slot_in_range(remainder, 13, equal_days);
   if(month < 0) {
     printf("Error: days value not within range!\n");
   }

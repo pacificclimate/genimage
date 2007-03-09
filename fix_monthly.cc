@@ -109,7 +109,7 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
   // Special handling of time
   vector<NcDim*> dims;
   NcVar* intime = in.get_var("time");
-  NcVar* outtime;
+  NcVar* outtime = 0;
   if(intime) {
     populate_dimvec(intime, out, dims);
     outtime = out.add_var("time", ncInt, dims.size(), (const NcDim**)&dims[0]);
@@ -134,7 +134,7 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
   // Construct the list of what to copy
   long* edges = invar->edges();
   int recsize = get_recsize_and_edges(invar, edges);
-  printf("recsize: %i, listsize: %i\n", recsize, drlist.size());
+  printf("recsize: %i, listsize: %li\n", recsize, drlist.size());
   
   // Run through the list of data bits
   float* fdata = new float[recsize];
@@ -166,6 +166,8 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
     case ncDouble:
       copy_double_to_float(d.v, outvar, recsize, edges, ddata, fdata);
       break;
+    default:
+      assert(false);
     }
     j++;
   }
