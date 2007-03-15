@@ -1,6 +1,7 @@
 //#include <iostream>
 
 #include "common.h"
+#include <boost/lexical_cast.hpp>
 
 void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list<int>& omitlist) {
   int numtimes = 1;
@@ -202,7 +203,6 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
 
 int main(int argc, char** argv) {
   char buf[1024];
-  list<Range<int> > ranges;
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   ncopts = NC_VERBOSE;
@@ -213,27 +213,40 @@ int main(int argc, char** argv) {
 
   string output_path = argv[1];
 
-  // First step: Accumulate the climatologies (provided on command line after filename)
-  for(int i = 2; i + 1 < argc; i += 2) {
-    Range<int> r(atoi(argv[i]), atoi(argv[i + 1]));
-    ranges.push_back(r);
-  }
-
   // Second step: Read the files in, one by one; extract the climatologies
   while(fgets(buf, 1024, stdin)) {
     // Chomp a la perl
-    list<int> omitlist;
     *(strchr(buf, '\n')) = '\0';
+
+    list<int> omitlist;
+    list<Range<int> > ranges;
+    list<Range<int> >::const_iterator i;
     string filename = buf;
 
     // Split up input line into filename and omit bits
-    boost::char_separator<char> sep(",");
-    tokenizer<char_separator<char> > tok(filename, sep);
+    boost::char_separator<char> commasep(",");
+    boost::char_separator<char> colonsep(":");
+    tokenizer<char_separator<char> > tok(filename, commasep);
     tokenizer<char_separator<char> >::const_iterator bits = tok.begin();
     filename = *bits;
     for(++bits; bits != tok.end(); ++bits) {
-      
-      omitlist.push_back(atoi((*bits).c_str()));
+      if((*bits).find(":")) {
+	tokenizer<char_separator<char> > rtok(*bits, colonsep);
+	tokenizer<char_separator<char> >::const_iterator rbits = rtok.begin();
+	int min, max;
+	try {
+	  min = lexical_cast<int>(*rbits);
+	  ++rbits;
+	  assert(rbits != tok.end());
+	  max = lexical_cast<int>(*rbits);
+	  Range<int> r(min, max);
+	  ranges.push_back(r);
+	} catch(bad_lexical_cast& b) {
+	  assert(false);
+	}
+      } else {
+	omitlist.push_back(atoi((*bits).c_str()));
+      }
     }
     FileRecord fr(filename.c_str(), false);
 
@@ -243,7 +256,6 @@ int main(int argc, char** argv) {
     }
 
     // Generate climatologies
-    list<Range<int> >::const_iterator i;
     for(i = ranges.begin(); i != ranges.end(); i++) {
       create_climatology(fr, output_path, *i, omitlist);
     }
