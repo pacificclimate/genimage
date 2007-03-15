@@ -111,6 +111,8 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     outvar = out.add_var(invar->name(), invar->type(), dims.size(), (const NcDim**)&dims[0]);
     copy_atts(invar, outvar);
 
+    float missing = outvar->get_att("missing")->as_float(0);
+
     // Do the averaging
     int days[MAX_TOY];
 
@@ -153,10 +155,10 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
       }
 
       // Multiply by # of days to give accumulated days of the mean in the month
-      multiply_grid_by_scalar(rec_size, indata, days_in_month);
+      multiply_grid_by_scalar(rec_size, indata, days_in_month, missing);
 
       // Do month
-      add_to_grid(rec_size, indata, data + (rec_size * month));
+      add_to_grid(rec_size, indata, data + (rec_size * month), missing);
       days[month] += days_in_month;
     }
 

@@ -467,6 +467,18 @@ void add_to_grid(int size, float* input, float* accum) {
   }
 }
 
+void add_to_grid(int size, float* input, float* accum, float missing) {
+  for(int i = 0; i < size; i++) {
+    if(accum[i] != missing) {
+      if(input[i] == missing) {
+	accum[i] = missing;
+      } else {
+	accum[i] += input[i];
+      }
+    }
+  }
+}
+
 template <typename T> void divide_grid_by_scalar(int size, float* input, T scalar) {
   for(int i = 0; i < size; i++) {
     input[i] /= scalar;
@@ -478,6 +490,19 @@ template <typename T> void multiply_grid_by_scalar(int size, float* input, T sca
     input[i] *= scalar;
   }
 }
+
+template <typename T> void multiply_grid_by_scalar(int size, float* input, T scalar, float missing) {
+  for(int i = 0; i < size; i++) {
+    if(input[i] != missing) {
+      if(input[i] == missing) {
+	input[i] = missing;
+      } else {
+	input[i] *= scalar;
+      }
+    }
+  }
+}
+
 
 int get_recsize_and_edges(NcVar* invar, long* edges) {
   // Construct the list of what to copy
