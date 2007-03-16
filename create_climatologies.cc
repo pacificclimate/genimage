@@ -20,7 +20,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     
     start_offset = do_binary_search(r.min, numtimes, times);
     if(start_offset == -1 || start_offset + (r.max - r.min) >= numtimes) {
-      printf("Specified offsets are not within range of data set: %i to %i, start is %i, max is %i\n", r.min, r.max, times[start_offset], times[numtimes - 1]);
+      printf("Specified offsets are not within range of data set: %i to %i, start is %i, max is %i\n", r.min, r.max, times[0], times[numtimes - 1]);
       delete[] times;
       return;
     }
@@ -111,7 +111,12 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     outvar = out.add_var(invar->name(), invar->type(), dims.size(), (const NcDim**)&dims[0]);
     copy_atts(invar, outvar);
 
-    float missing = outvar->get_att("missing")->as_float(0);
+    // Load missing value
+    NcAtt* mv;
+    float missing = 1e20f;
+    if((mv = outvar->get_att("missing_value"))) {
+      missing = mv->as_float(0);
+    }
 
     // Do the averaging
     int days[MAX_TOY];
@@ -210,7 +215,8 @@ int main(int argc, char** argv) {
   ncopts = NC_VERBOSE;
 
   if(argc < 2) {
-    printf("Usage: create_climatologies <output_path> [<climatology start> <climatology end>...]");
+    printf("Usage: create_climatologies <output_path> [<climatology start> <climatology end>...]\n");
+    exit(1);
   }
 
   string output_path = argv[1];
@@ -220,17 +226,26 @@ int main(int argc, char** argv) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
 
+    if(*buf == '#') {
+      printf("Comment!\n");
+      continue;
+    }
+
     list<int> omitlist;
     list<Range<int> > ranges;
     list<Range<int> >::const_iterator i;
-    string filename = buf;
+    string input_line = buf;
 
     // Split up input line into filename and omit bits
     boost::char_separator<char> commasep(",");
     boost::char_separator<char> colonsep(":");
-    tokenizer<char_separator<char> > tok(filename, commasep);
+    tokenizer<char_separator<char> > tok(input_line, commasep);
     tokenizer<char_separator<char> >::const_iterator bits = tok.begin();
-    filename = *bits;
+
+    assert(tok.begin() != tok.end());
+
+    string filename = *bits;
+    
     for(++bits; bits != tok.end(); ++bits) {
       if((*bits).find(":")) {
 	tokenizer<char_separator<char> > rtok(*bits, colonsep);
@@ -239,7 +254,7 @@ int main(int argc, char** argv) {
 	try {
 	  min = lexical_cast<int>(*rbits);
 	  ++rbits;
-	  assert(rbits != tok.end());
+	  assert(rbits != rtok.end());
 	  max = lexical_cast<int>(*rbits);
 	  Range<int> r(min, max);
 	  ranges.push_back(r);
