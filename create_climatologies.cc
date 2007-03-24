@@ -172,27 +172,27 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     // FIXME BUG BUG BUG
     // FIXME MAYBE USE DAYS OF MONTHS?
     for(int i = JAN; i <= DEC; i++) {
-      divide_grid_by_scalar(rec_size, data + (rec_size * i), days[i]);
-      add_to_grid(rec_size, data + (rec_size * i), data + (rec_size * ANN));
+      divide_grid_by_scalar(rec_size, data + (rec_size * i), days[i], missing);
+      add_to_grid(rec_size, data + (rec_size * i), data + (rec_size * ANN), missing);
     }
-    add_to_grid(rec_size, data + (rec_size * DEC), data + (rec_size * DJF));
-    add_to_grid(rec_size, data + (rec_size * JAN), data + (rec_size * DJF));
-    add_to_grid(rec_size, data + (rec_size * FEB), data + (rec_size * DJF));
-    add_to_grid(rec_size, data + (rec_size * MAR), data + (rec_size * MAM));
-    add_to_grid(rec_size, data + (rec_size * APR), data + (rec_size * MAM));
-    add_to_grid(rec_size, data + (rec_size * MAY), data + (rec_size * MAM));
-    add_to_grid(rec_size, data + (rec_size * JUN), data + (rec_size * JJA));
-    add_to_grid(rec_size, data + (rec_size * JUL), data + (rec_size * JJA));
-    add_to_grid(rec_size, data + (rec_size * AUG), data + (rec_size * JJA));
-    add_to_grid(rec_size, data + (rec_size * SEP), data + (rec_size * SON));
-    add_to_grid(rec_size, data + (rec_size * OCT), data + (rec_size * SON));
-    add_to_grid(rec_size, data + (rec_size * NOV), data + (rec_size * SON));
+    add_to_grid(rec_size, data + (rec_size * DEC), data + (rec_size * DJF), missing);
+    add_to_grid(rec_size, data + (rec_size * JAN), data + (rec_size * DJF), missing);
+    add_to_grid(rec_size, data + (rec_size * FEB), data + (rec_size * DJF), missing);
+    add_to_grid(rec_size, data + (rec_size * MAR), data + (rec_size * MAM), missing);
+    add_to_grid(rec_size, data + (rec_size * APR), data + (rec_size * MAM), missing);
+    add_to_grid(rec_size, data + (rec_size * MAY), data + (rec_size * MAM), missing);
+    add_to_grid(rec_size, data + (rec_size * JUN), data + (rec_size * JJA), missing);
+    add_to_grid(rec_size, data + (rec_size * JUL), data + (rec_size * JJA), missing);
+    add_to_grid(rec_size, data + (rec_size * AUG), data + (rec_size * JJA), missing);
+    add_to_grid(rec_size, data + (rec_size * SEP), data + (rec_size * SON), missing);
+    add_to_grid(rec_size, data + (rec_size * OCT), data + (rec_size * SON), missing);
+    add_to_grid(rec_size, data + (rec_size * NOV), data + (rec_size * SON), missing);
 
-    divide_grid_by_scalar(rec_size, data + (rec_size * DJF), 3);
-    divide_grid_by_scalar(rec_size, data + (rec_size * MAM), 3);
-    divide_grid_by_scalar(rec_size, data + (rec_size * JJA), 3);
-    divide_grid_by_scalar(rec_size, data + (rec_size * SON), 3);
-    divide_grid_by_scalar(rec_size, data + (rec_size * ANN), 12);
+    divide_grid_by_scalar(rec_size, data + (rec_size * DJF), 3, missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * MAM), 3, missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * JJA), 3, missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * SON), 3, missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * ANN), 12, missing);
   }
   
   delete[] edges;
@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
   ncopts = NC_VERBOSE;
 
   if(argc < 2) {
-    printf("Usage: create_climatologies <output_path> [<climatology start> <climatology end>...]\n");
+    printf("Usage: create_climatologies <output_path>\n");
     exit(1);
   }
 
@@ -247,7 +247,7 @@ int main(int argc, char** argv) {
     string filename = *bits;
     
     for(++bits; bits != tok.end(); ++bits) {
-      if((*bits).find(":")) {
+      if((*bits).find(":") != string::npos) {
 	tokenizer<char_separator<char> > rtok(*bits, colonsep);
 	tokenizer<char_separator<char> >::const_iterator rbits = rtok.begin();
 	int min, max;
