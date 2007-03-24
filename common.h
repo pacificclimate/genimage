@@ -201,25 +201,27 @@ public:
 	int start_year, start_month, start_day;
 	NcAtt* cal = t->get_att("calendar");
 	NcAtt* units = t->get_att("units");
-	char* ctype = cal->as_string(0);
-	char* calendar_start = units->as_string(0);
 
-	calendar_type = ctype;
-	if(calendar_type == "standard")
-	  calendar_type = "gregorian";
-	else if(calendar_type == "noleap")
-	  calendar_type = "365_day";
+	if(cal && units) {
+	  char* ctype = cal->as_string(0);
+	  char* calendar_start = units->as_string(0);
+	  calendar_type = ctype;
+	  if(calendar_type == "standard")
+	    calendar_type = "gregorian";
+	  else if(calendar_type == "noleap")
+	    calendar_type = "365_day";
+	  delete[] ctype;
 
-	if(do_time_calcs) {
-	  // Load in the base month
-	  if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
-	    printf("Failure to match start date\n");
-	    return;
+	  if(do_time_calcs) {
+	    // Load in the base month
+	    if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
+	      printf("Failure to match start date\n");
+	      return;
+	    }
+	    this->start_day = date2days(calendar_type, start_year, start_month, start_day);
 	  }
-	this->start_day = date2days(calendar_type, start_year, start_month, start_day);
+	  delete[] calendar_start;
 	}
-	delete[] ctype;
-	delete[] calendar_start;
 	delete cal;
 	delete units;
       }
