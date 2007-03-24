@@ -487,6 +487,18 @@ template <typename T> void divide_grid_by_scalar(int size, float* input, T scala
   }
 }
 
+template <typename T> void divide_grid_by_scalar(int size, float* input, T scalar, float missing) {
+  for(int i = 0; i < size; i++) {
+    if(input[i] != missing) {
+      if(input[i] == missing) {
+	input[i] = missing;
+      } else {
+	input[i] /= scalar;
+      }
+    }
+  }
+}
+
 template <typename T> void multiply_grid_by_scalar(int size, float* input, T scalar) {
   for(int i = 0; i < size; i++) {
     input[i] *= scalar;
@@ -504,7 +516,6 @@ template <typename T> void multiply_grid_by_scalar(int size, float* input, T sca
     }
   }
 }
-
 
 int get_recsize_and_edges(NcVar* invar, long* edges) {
   // Construct the list of what to copy
