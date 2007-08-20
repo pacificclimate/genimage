@@ -27,7 +27,8 @@ using namespace boost;
 
 enum TIMESOFYEAR{JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC,DJF,MAM,JJA,SON,ANN};
 
-enum FILEBITS{DOT,EXPT,VAR,MODEL,RUN,FILENAME};
+enum PATHBITS{DOT,EXPT,VAR,MODEL,RUN,FILENAME};
+enum FILEBITS{FMODEL,FEXPT,FVAR,FRUN,YEARSTART,YEAREND};
 const int noleap_days[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
 const int leap_days[] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
 const int equal_days[] = { 0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360 };
@@ -168,8 +169,10 @@ int date2days(string calendar_type, int start_year, int start_month, int start_d
 class FileRecord {
 public:
 
-  FileRecord(string filename, bool do_time_calcs = true): filename(filename), f(new NcFile(filename.c_str(), NcFile::ReadOnly)) {
+  FileRecord(string filename, bool do_time_calcs = true, bool do_filename_date_parsing = false): filename(filename), f(new NcFile(filename.c_str(), NcFile::ReadOnly)) {
     is_ok = f->is_valid();
+
+    hourly = false;
 
     if(is_ok) {
       boost::char_separator<char> sep("/");
@@ -182,14 +185,14 @@ public:
       run = tokens[RUN];
       
       // Check if this is corrected data
-      string fn = tokens[FILENAME];
-      corrected = (fn.find("corrected") != string::npos);
+      file = tokens[FILENAME];
+      corrected = (file.find("corrected") != string::npos);
       
-      set_time_params(do_time_calcs);
+      set_time_params(do_time_calcs, do_filename_date_parsing);
     }
   }
 
-  void set_time_params(bool do_time_calcs = true) {
+  void set_time_params(bool do_time_calcs = true, bool do_filename_date_parsing = false) {
     if(!is_ok)
       return;
 
@@ -197,33 +200,49 @@ public:
     if(f->get_dim("time")) {
       timeless = false;
       
-      if((t = f->get_var("time"))) {
-	int start_year, start_month, start_day;
-	NcAtt* cal = t->get_att("calendar");
-	NcAtt* units = t->get_att("units");
-
-	if(cal && units) {
-	  char* ctype = cal->as_string(0);
-	  char* calendar_start = units->as_string(0);
-	  calendar_type = ctype;
-	  if(calendar_type == "standard")
-	    calendar_type = "gregorian";
-	  else if(calendar_type == "noleap")
-	    calendar_type = "365_day";
-	  delete[] ctype;
-
-	  if(do_time_calcs) {
-	    // Load in the base month
-	    if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
-	      printf("Failure to match start date\n");
-	      return;
-	    }
-	    this->start_day = date2days(calendar_type, start_year, start_month, start_day);
-	  }
-	  delete[] calendar_start;
+      int start_year, start_month, start_day;
+      if(do_filename_date_parsing) {
+	int monyear = 0;
+	char* stuff = strrchr(strrchr(filename.c_str(), '/'), '_');
+	calendar_type = "365_day";
+	printf("Filename: %s\n", filename.c_str());
+	if(sscanf(stuff, "_%i.nc", &monyear) != 1) {
+	  printf("Failure to match date\n");
+	  return;
 	}
-	delete cal;
-	delete units;
+	start_day = 1;
+	start_month = monyear % 100;
+	start_year = monyear / 100;
+	hourly = true;
+	this->start_day = date2days(calendar_type, start_year, start_month, start_day);
+      } else {
+	if((t = f->get_var("time"))) {
+	  NcAtt* cal = t->get_att("calendar");
+	  NcAtt* units = t->get_att("units");
+	  
+	  if(cal && units) {
+	    char* ctype = cal->as_string(0);
+	    char* calendar_start = units->as_string(0);
+	    calendar_type = ctype;
+	    if(calendar_type == "standard")
+	      calendar_type = "gregorian";
+	    else if(calendar_type == "noleap")
+	      calendar_type = "365_day";
+	    delete[] ctype;
+	    
+	    if(do_time_calcs) {
+	      // Load in the base month
+	      if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
+		printf("Failure to match start date\n");
+		return;
+	      }
+	      this->start_day = date2days(calendar_type, start_year, start_month, start_day);
+	    }
+	    delete[] calendar_start;
+	  }
+	  delete cal;
+	  delete units;
+	}
       }
     } else {
       timeless = true;
@@ -244,10 +263,12 @@ public:
   string expt;
   string model;
   string run;
+  string file;
 
   shared_ptr<NcFile> f;
   bool corrected;
   bool timeless;
+  bool hourly;
 
   string calendar_type;
   int start_day;
@@ -436,6 +457,14 @@ void copy_dims(NcFile& src, NcFile& dst) {
   for(int i = 0; i < src.num_dims(); i++) {
     assert(copy_dim(src, dst, i));
   }
+}
+
+template <typename T> void copy_to_float(NcVar* src, NcVar* dst, int bufsize, long* edges, T* indata, float* outdata, float scale_factor, float bias) {
+    assert(src->get(indata, edges));
+    for(int i = 0; i < bufsize; i++) {
+      outdata[i] = ((float)indata[i] * scale_factor) - bias;
+    }
+    assert(dst->put(outdata, edges));
 }
 
 void copy_double_to_float(NcVar* src, NcVar* dst, int bufsize, long* edges, double* indata, float* outdata) {

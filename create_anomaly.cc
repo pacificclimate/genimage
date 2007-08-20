@@ -4,12 +4,13 @@
 
 int main(int argc, char** argv) {
   list<Range<int> > ranges;
+  bool percent_calcs = false;
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   ncopts = NC_VERBOSE;
 
   if(argc < 3) {
-    printf("Usage: create_climatologies <normal climatology> <prediction climatology to modify>");
+    printf("Usage: create_anomaly <normal data> <prediction data (will be modified)> [<percent>]\n");
     exit(1);
   }
 
