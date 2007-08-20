@@ -156,7 +156,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
       } else if(f.calendar_type == "360_day") {
 	days_in_month = equal_dpm[month];
       } else {
-	assert(false);
+	days_in_month = noleap_dpm[month];
       }
 
       // Multiply by # of days to give accumulated days of the mean in the month
@@ -209,7 +209,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
 }
 
 int main(int argc, char** argv) {
-  char buf[1024];
+  char buf[10240];
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   ncopts = NC_VERBOSE;
@@ -222,7 +222,7 @@ int main(int argc, char** argv) {
   string output_path = argv[1];
 
   // Second step: Read the files in, one by one; extract the climatologies
-  while(fgets(buf, 1024, stdin)) {
+  while(fgets(buf, 10240, stdin)) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
 
