@@ -14,6 +14,10 @@ int main(int argc, char** argv) {
     exit(1);
   }
 
+  if(argc > 3) {
+    percent_calcs = true;
+  }
+
   float missing = 1e20f;
 
   string normal_file = argv[1];
@@ -39,7 +43,9 @@ int main(int argc, char** argv) {
   NcAtt* units = pred_var->get_att("units");
   assert(units);
   string unitstr;
-  {
+  if(percent_calcs) {
+    unitstr = "percent";
+  } else {
     char* bs = units->as_string(0);
     unitstr = bs;
     delete[] bs;
@@ -64,11 +70,21 @@ int main(int argc, char** argv) {
 
   assert(norm_rec_size == pred_rec_size);
 
-  for(int i = 0; i < pred_rec_size; i++) {
-    if(pred_data[i] != missing && norm_data[i] != missing) {
-      pred_data[i] -= norm_data[i];
-    } else {
-      pred_data[i] = missing;
+  if(percent_calcs) {
+    for(int i = 0; i < pred_rec_size; i++) {
+      if(pred_data[i] != missing && norm_data[i] != missing && norm_data[i] != 0) {
+	pred_data[i] = 100 * ((pred_data[i] - norm_data[i]) / norm_data[i]);
+      } else {
+	pred_data[i] = missing;
+      }
+    }
+  } else {
+    for(int i = 0; i < pred_rec_size; i++) {
+      if(pred_data[i] != missing && norm_data[i] != missing) {
+	pred_data[i] -= norm_data[i];
+      } else {
+	pred_data[i] = missing;
+      }
     }
   }
 
