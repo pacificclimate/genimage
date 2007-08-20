@@ -44,6 +44,10 @@ void populate_drlist(list<FileRecord>& l, list<DataRecord>& drlist) {
       double* days = new double[len];
       t->get(days, len);
 
+      if(f.hourly) 
+	for(i = 0; i < len; i++) 
+	  days[i] /= 24;
+
       for(i = 0; i < len; i++) {
 	//printf("Start day: %i, Day: %f\n", f->start_day, days[i]);
 	DataRecord dr(*li, v, i, get_total_months(f.calendar_type, (int)(f.start_day + days[i])));
@@ -144,8 +148,23 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
 
   // FIXME: Improve method of calculating output offset (use initial month?)
   int j = 0;
+
   for(ts = drlist.begin(); ts != drlist.end(); ++ts) {
     const DataRecord& d = *ts;
+    float bias = 0;
+    float scale_factor = 1;
+
+    NcAtt* var_add_offset = d.v->get_att("add_offset");
+    NcAtt* var_scale_factor = d.v->get_att("scale_factor");
+
+    if(var_add_offset) {
+      bias += -var_add_offset->as_float(0);
+    }
+
+    if(var_scale_factor) {
+      scale_factor *= var_scale_factor->as_float(0);
+    }
+
     months.push_back(d.month);
 
     // Add the data to the output variable
@@ -157,8 +176,10 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
     case ncByte:
     case ncChar:
     case ncShort:
+      copy_to_float(d.v, outvar, recsize, edges, (short*)ddata, fdata, scale_factor, bias);
+      break;
     case ncLong:
-      assert(false);
+      copy_to_float(d.v, outvar, recsize, edges, (int*)ddata, fdata, scale_factor, bias);
       break;
     case ncFloat:
       copy_float_to_float(d.v, outvar, recsize, edges, fdata);
@@ -188,12 +209,17 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
 int main(int argc, char** argv) {
   char buf[1024];
   list<FileRecord> l;
+  bool filename_date_parsing = false;
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   ncopts = NC_VERBOSE;
 
   if(argc < 2) {
-    printf("Usage: fix_missing <output_path>");
+    printf("Usage: fix_missing <output_path> [<filename date parsing boolean>]\n");
+  }
+
+  if(argc > 2) {
+    filename_date_parsing = (atoi(argv[2]) > 0);
   }
 
   string output_path = argv[1];
@@ -201,7 +227,7 @@ int main(int argc, char** argv) {
   while(fgets(buf, 1024, stdin)) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
-    FileRecord fr(buf);
+    FileRecord fr(buf, true, filename_date_parsing);
 
     if(!fr.is_ok) {
       printf("Failed to open file %s\n", buf);
