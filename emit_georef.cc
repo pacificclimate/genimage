@@ -7,8 +7,18 @@ int main(int argc, char** argv) {
   ncopts = NC_VERBOSE;
 
   if(argc < 2) {
-    printf("Usage: emit_georef <climatology file>");
+    printf("Usage: emit_georef <climatology file> [<bias> <scale factor>]");
     exit(1);
+  }
+
+  float scale_factor = 1;
+  float bias = 0;
+
+  if(argc > 2) {
+    bias = atof(argv[2]);
+    if(argc > 3) {
+      scale_factor = atof(argv[3]);
+    }
   }
 
   float missing = 1e20f;
@@ -17,6 +27,7 @@ int main(int argc, char** argv) {
   assert(f.is_ok);
 
   NcVar* var = f.f->get_var(f.var.c_str());
+
   NcVar* lats = f.f->get_var("lat");
   NcVar* longs = f.f->get_var("lon");
   assert(var && lats && longs);
@@ -50,10 +61,10 @@ int main(int argc, char** argv) {
     const int latoff = i * longdim->size();
     for(int j = 0; j < longdim->size(); j++) {
       const int longoff = latoff + j;
-      printf("%f,%f", latdata[i], longdata[j]);
+      printf("%f,%f", latdata[i], fmod((longdata[j] + 180.0f), 360.0f) - 180.0f);
       for(int k = 0; k < toy->size(); k++) {
 	const int offset = longoff + k * recsize;
-	printf(",%f", data[offset]);
+    	printf(",%f", (data[offset] - bias) * scale_factor);
       }
       printf("\n");
     }
