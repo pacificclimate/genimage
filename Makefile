@@ -1,5 +1,5 @@
-CXX=g++-4.0
-CC=gcc-4.0
+CXX=g++
+CC=gcc
 #CXXFLAGS=-O0 -pg -g -Wall
 #CXXFLAGS=-pg -g -Wall
 CXXFLAGS=-g3 -O2 -march=pentium3 -Wall -Wextra
