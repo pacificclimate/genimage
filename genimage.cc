@@ -849,6 +849,7 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
 
     if(symbols.find((*vars_iter)->expt) != symbols.end()) {
       (*vars_iter)->symbol = special;
+    dm.timeofyear = i;
     } else if((*vars_iter)->expt.substr(2, 1) == "x") {
       (*vars_iter)->symbol = ensemble;
     } else {
