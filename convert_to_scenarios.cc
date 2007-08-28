@@ -193,7 +193,7 @@ void copy_lats_longs(NcFile& in, NcFile& out) {
   // and that the latitude origin is at 0 (greenwich)
   assert(latdat[0] < latdat[lats->num_vals() - 1]);
   assert(lats->num_vals() % 2 == 0);
-  assert(longdat[0] == 0 && longs->num_vals() % 2 == 0);
+  assert(longs->num_vals() % 2 == 0);
   
   // Reverse lats so north is at the top
   const int mid_lat = lats->num_vals() / 2;
@@ -223,6 +223,7 @@ void copy_lats_longs(NcFile& in, NcFile& out) {
 void copy_lats_longs_bnds(NcFile& in, NcFile& out) {
   NcVar* lats = copy_var(in.get_var("lat_bnds"), out);
   NcVar* longs = copy_var(in.get_var("lon_bnds"), out);
+  assert(lats && longs);
   long* lat_edges = lats->edges();
   int lat_recsize = get_recsize_and_edges(lats, lat_edges);
   long* long_edges = longs->edges();
@@ -250,6 +251,11 @@ void copy_lats_longs_bnds(NcFile& in, NcFile& out) {
   // Convert unsigned (0 to 360) to signed (-180 to 180)
   for(int i = 0; i < long_recsize; i++)
     longdat[i] = u_lon_to_s(longdat[i]);
+
+  // Dirty
+  if(longdat[long_recsize - 1] == -180 && longdat[long_recsize - 2] > 0) {
+    longdat[long_recsize - 1] = 180;
+  }
   
   assert(lats->put(latdat, lat_edges));
   assert(longs->put(longdat, long_edges));
@@ -270,17 +276,30 @@ void add_slmask(NcVar* invar, NcFile& out) {
   // Create slmask variable
   NcDim* lat = out.get_dim("lat");
   NcDim* lon = out.get_dim("lon");
+  assert(lat && lon);
   NcVar* slmaskvar = out.add_var("slmask", ncInt, lat, lon);
   assert(slmaskvar);
 
   // Compute sea-land mask
-  invar->get(data, edges);
-  for(int i = 0; i < framesize; i++)
-    slmask[i] = ((data[i] - 1) > 1e-12);
+  assert(invar->get(data, edges));
+  const int num_long = lon->size();
+  const int max_lat = lat->size() - 1;
+  const int mid_lat = lat->size() / 2;
+  const int mid_long = num_long / 2;
+  for(int top = 0, bottom = max_lat; top < mid_lat; top++, bottom--) {
+    const int top_off = top * num_long;
+    const int bottom_off = bottom * num_long;
+    for(int left = 0, right = mid_long; left < mid_long; left++, right++) {
+      slmask[top_off + left] = (data[bottom_off + right] >= 50);
+      slmask[bottom_off + right] = (data[top_off + left] >= 50);
+      slmask[bottom_off + left] = (data[top_off + right] >= 50);
+      slmask[top_off + right] = (data[bottom_off + left] >= 50);
+    }
+  }
 
   // Store sea-land mask
   long* slmask_edges = slmaskvar->edges();
-  slmaskvar->put(slmask, slmask_edges);
+  assert(slmaskvar->put(slmask, slmask_edges));
 
   delete[] edges;
   delete[] slmask_edges;
@@ -288,15 +307,25 @@ void add_slmask(NcVar* invar, NcFile& out) {
   delete[] slmask;
 }
 
+class VarFile {
+public:
+  VarFile(string file, NcVar* var, VarTrans& vt): vt(vt) { this->file = file; this->var = var; }
+  string file;
+  NcVar* var;
+  VarTrans& vt;
+};
+
 int main(int argc, char** argv) {
   char buf[1024];
   list<FileRecord> l;
   bool first = true;
-  bool seen_orog = false;
+  bool seen_sftlf = false;
   map<string, VarTrans> var_trans;
   map<string, VarTrans> var_trans_future;
   map<string, string> date_trans;
   map<string, string> expt_trans;
+  list<VarFile> varfile;
+  list<VarFile>::const_iterator vfit;
 
   NcDim* rows = 0;
   NcDim* columns = 0;
@@ -323,7 +352,7 @@ int main(int argc, char** argv) {
   }
 
   // Open new NetCDF file for writing
-  NcFile out(argv[1], NcFile::Replace);
+  NcFile out(argv[1], NcFile::Replace, NULL, 0, NcFile::Offset64Bits);
   assert(out.is_valid());
   out.set_fill(NcFile::NoFill);
 
@@ -331,6 +360,7 @@ int main(int argc, char** argv) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
 
+    string filename = buf;
     FileRecord fr(buf, false);
     if(!fr.is_ok) {
       printf("Failed to open file %s\n", buf);
@@ -370,22 +400,31 @@ int main(int argc, char** argv) {
     // Compare variable name...
     NcVar* invar = in.get_var(fr.var.c_str());
     assert(invar);
-    long* edges = invar->edges();
-    int recsize = get_recsize_and_edges(invar, edges);
-    if(fr.var == "orog") {
-      if(!seen_orog) {
-	seen_orog = true;
+    NcDim* inlats = in.get_dim("lat");
+    NcDim* inlongs = in.get_dim("lon");
 
+    if(!inlats || !inlongs) {
+      continue;
+    }
+
+    if(inlats->size() != rows->size() || inlongs->size() != columns->size()) {
+      printf("Dimensions of input and output data do not match; file: %s\n", buf);
+      continue;
+    }
+    
+    if(fr.var == "sftlf") {
+      if(!seen_sftlf) {
+	seen_sftlf = true;
 	add_slmask(invar, out);
       }
     } else {
-      // Copy variable, applying any scaling factors or additions
+      // Create new var
       list<string> expts;
       list<string>::const_iterator expt;
       if(var_trans.find(fr.var) == var_trans.end()) {
-	delete[] edges;
 	continue;
       }
+
       VarTrans& var = (fr.expt == "20c3m") ? var_trans[fr.var] : var_trans_future[fr.var];
       if(fr.expt == "20c3m") {
 	expts.push_back(expt_trans["sresa1b"]);
@@ -397,7 +436,6 @@ int main(int argc, char** argv) {
       }
 
       for(expt = expts.begin(); expt != expts.end(); ++expt) {
-
 	assert(date_trans.find(daterange) != date_trans.end());
 	// Create variable name
 	string varname = *expt + "-" + fr.run + "_" + date_trans[daterange] + "_" + var.name;
@@ -412,42 +450,61 @@ int main(int argc, char** argv) {
 	NcVar* outvar = out.add_var(varname.c_str(), ncDouble, (int)dims.size(), (const NcDim**)&dims[0]);
 	copy_atts(invar, outvar);
 
-	// Allocate space for both new and old dat, get old dat
-	float* indat = new float[recsize];
-	double* outdat = new double[recsize];
-	invar->get(indat, edges);
-	
-	// Reverse lats so north is at the top
-	// Move longs around so 180W is on the left edge
-	// Change to double, multiply, and scale
-	// ASSUMPTION: Even # of lats and longs (asserted above)
-	const int num_toy = timesofyear->size();
-	const int num_lat = rows->size();
-	const int num_long = columns->size();
-	const int max_lat = num_lat - 1;
-	const int mid_lat = num_lat / 2;
-	const int mid_long = num_long / 2;
-	for(int i = 0; i < num_toy; i++) {
-	  const int off = i * num_lat * num_long;
-	  for(int top = 0, bottom = max_lat; top < mid_lat; top++, bottom--) {
-	    const int top_off = off + (top * num_long);
-	    const int bottom_off = off + (bottom * num_long);
-	    for(int left = 0, right = mid_long; left < mid_long; left++, right++) {
-	      outdat[top_off + left] = ((double)indat[bottom_off + right] * var.multiplier) + var.add_factor;
-	      outdat[bottom_off + right] = ((double)indat[top_off + left] * var.multiplier) + var.add_factor;
-	      outdat[bottom_off + left] = ((double)indat[top_off + right] * var.multiplier) + var.add_factor;
-	      outdat[top_off + right] = ((double)indat[bottom_off + left] * var.multiplier) + var.add_factor;
-	    }
-	  }
-	}
-
-	// Output old data
-	outvar->put(outdat, edges);
-	
-	delete[] indat;
-	delete[] outdat;
+	varfile.push_back(VarFile(filename, outvar, var));
       }
     }
+  }
+
+  printf("Step 1 complete\n");
+
+  for(vfit = varfile.begin(); vfit != varfile.end(); vfit++) {
+    NcVar* outvar = (*vfit).var;
+    VarTrans& var = (*vfit).vt;
+    FileRecord fr((*vfit).file, false);
+    if(!fr.is_ok) {
+      printf("Failed to open file %s\n", buf);
+      continue;
+    }
+
+    NcFile& in = *(fr.f);
+    NcVar* invar = in.get_var(fr.var.c_str());
+    long* edges = invar->edges();
+    int recsize = get_recsize_and_edges(invar, edges);
+
+    // Allocate space for both new and old dat, get old dat
+    float* indat = new float[recsize];
+    double* outdat = new double[recsize];
+    assert(invar->get(indat, edges));
+    
+    // Reverse lats so north is at the top
+    // Move longs around so 180W is on the left edge
+    // Change to double, multiply, and scale
+    // ASSUMPTION: Even # of lats and longs (asserted above)
+    const int num_toy = timesofyear->size();
+    const int num_lat = rows->size();
+    const int num_long = columns->size();
+    const int max_lat = num_lat - 1;
+    const int mid_lat = num_lat / 2;
+    const int mid_long = num_long / 2;
+    for(int i = 0; i < num_toy; i++) {
+      const int off = i * num_lat * num_long;
+      for(int top = 0, bottom = max_lat; top < mid_lat; top++, bottom--) {
+	const int top_off = off + (top * num_long);
+	const int bottom_off = off + (bottom * num_long);
+	for(int left = 0, right = mid_long; left < mid_long; left++, right++) {
+	  outdat[top_off + left] = ((double)indat[bottom_off + right] * var.multiplier) + var.add_factor;
+	  outdat[bottom_off + right] = ((double)indat[top_off + left] * var.multiplier) + var.add_factor;
+	  outdat[bottom_off + left] = ((double)indat[top_off + right] * var.multiplier) + var.add_factor;
+	  outdat[top_off + right] = ((double)indat[bottom_off + left] * var.multiplier) + var.add_factor;
+	}
+      }
+    }
+
+    // Output old data
+    assert(outvar->put(outdat, edges));
+	
+    delete[] indat;
+    delete[] outdat;
     delete[] edges;
   }
 
@@ -458,4 +515,6 @@ int main(int argc, char** argv) {
     timesofyear->rename("timesofyear");
   }
   out.close();
+
+  printf("Step 2 complete\n");
 }
