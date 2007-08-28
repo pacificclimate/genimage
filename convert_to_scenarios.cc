@@ -65,6 +65,8 @@
 
 enum TRANS_TYPE{AMOUNT,AVERAGE};
 
+#define LAND_LEVEL 0.01
+
 class VarTrans {
 public:
   VarTrans() { add_factor = 0; multiplier = 0; name = "ERROR"; }
@@ -138,19 +140,19 @@ void add_var_trans_entries(map<string, VarTrans>& var_trans, map<string, VarTran
 
   // Mean Temperature (convert from K to C by subtracting 273.15)
   var_trans["tas"] = VarTrans("temp", -273.15, 1);
-  var_trans_future["tas"] = VarTrans("temp", -273.15, 1);
+  var_trans_future["tas"] = VarTrans("temp", 0, 1);
 
   // Mean Daily Maximum Temperature (convert from K to C by subtracting 273.15)
   var_trans["tasmax"] = VarTrans("tmax", -273.15, 1);
-  var_trans_future["tasmax"] = VarTrans("tmax", -273.15, 1);
+  var_trans_future["tasmax"] = VarTrans("tmax", 0, 1);
 
   // Mean Daily Minimum Temperature (convert from K to C by subtracting 273.15)
   var_trans["tasmin"] = VarTrans("tmin", -273.15, 1);
-  var_trans_future["tasmin"] = VarTrans("tmin", -273.15, 1);
+  var_trans_future["tasmin"] = VarTrans("tmin", 0, 1);
 
   // Mean Surface Temperature (convert from K to C by subtracting 273.15)
   var_trans["ts"] = VarTrans("surt", -273.15, 1);
-  var_trans_future["ts"] = VarTrans("surt", -273.15, 1);
+  var_trans_future["ts"] = VarTrans("surt", 0, 1);
 
   // Vapor Pressure (of water; compute using Buck eqn referenced below)
   var_trans["vapp"] = VarTrans("vapp", 0, 1);
