@@ -167,6 +167,32 @@ void add_var_trans_entries(map<string, VarTrans>& var_trans, map<string, VarTran
   // Can't have evap (no data)
 }
 
+template<typename T>
+void transmogrify_ll(T* dat, const int num_lat, const int num_long) {
+  const int max_lat = num_lat - 1;
+  const int mid_lat = num_lat / 2;
+  const int mid_long = num_long / 2;
+  for(int top = 0, bottom = max_lat; top < mid_lat; top++, bottom--) {
+    const int top_off = top * num_long;
+    const int bottom_off = bottom * num_long;
+    for(int left = 0, right = mid_long; left < mid_long; left++, right++) {
+      swap(dat[top_off + left], dat[bottom_off + right]);
+      swap(dat[bottom_off + left], dat[top_off + right]);
+    }
+    if(num_long % 2 == 1) {
+      // Odd # of longs
+      swap(dat[top_off + mid_long], dat[bottom_off + mid_long]);
+    }
+  }
+  if(num_lat % 2 == 1) {
+    // Odd # of lats
+    const int mid_off = mid_lat * num_long;
+    for(int left = 0, right = mid_long; left < mid_long; left++, right++) {
+      swap(dat[mid_off + left], dat[mid_off + right]);
+    }
+  }
+}
+
 double u_lon_to_s(double lon) {
   return fmod((lon + 180.0f), 360.0f) - 180.0f;
 }
@@ -192,8 +218,6 @@ void copy_lats_longs(NcFile& in, NcFile& out) {
   // that there are an even # of lats and longs,
   // and that the latitude origin is at 0 (greenwich)
   assert(latdat[0] < latdat[lats->num_vals() - 1]);
-  assert(lats->num_vals() % 2 == 0);
-  assert(longs->num_vals() % 2 == 0);
   
   // Reverse lats so north is at the top
   const int mid_lat = lats->num_vals() / 2;
@@ -282,20 +306,13 @@ void add_slmask(NcVar* invar, NcFile& out) {
 
   // Compute sea-land mask
   assert(invar->get(data, edges));
-  const int num_long = lon->size();
-  const int max_lat = lat->size() - 1;
-  const int mid_lat = lat->size() / 2;
-  const int mid_long = num_long / 2;
-  for(int top = 0, bottom = max_lat; top < mid_lat; top++, bottom--) {
-    const int top_off = top * num_long;
-    const int bottom_off = bottom * num_long;
-    for(int left = 0, right = mid_long; left < mid_long; left++, right++) {
-      slmask[top_off + left] = (data[bottom_off + right] >= 50);
-      slmask[bottom_off + right] = (data[top_off + left] >= 50);
-      slmask[bottom_off + left] = (data[top_off + right] >= 50);
-      slmask[top_off + right] = (data[bottom_off + left] >= 50);
-    }
+  for(int i = 0; i < framesize; i++) {
+    slmask[i] = (data[i] >= 50);
   }
+
+  const int num_lat = lat->size();
+  const int num_long = lon->size();
+  transmogrify_ll(slmask, num_lat, num_long);
 
   // Store sea-land mask
   long* slmask_edges = slmaskvar->edges();
@@ -479,25 +496,15 @@ int main(int argc, char** argv) {
     // Reverse lats so north is at the top
     // Move longs around so 180W is on the left edge
     // Change to double, multiply, and scale
-    // ASSUMPTION: Even # of lats and longs (asserted above)
     const int num_toy = timesofyear->size();
     const int num_lat = rows->size();
     const int num_long = columns->size();
-    const int max_lat = num_lat - 1;
-    const int mid_lat = num_lat / 2;
-    const int mid_long = num_long / 2;
+    for(int i = 0; i < recsize; i++) {
+      outdat[i] = ((double)indat[i] * var.multiplier) + var.add_factor;
+    }
     for(int i = 0; i < num_toy; i++) {
       const int off = i * num_lat * num_long;
-      for(int top = 0, bottom = max_lat; top < mid_lat; top++, bottom--) {
-	const int top_off = off + (top * num_long);
-	const int bottom_off = off + (bottom * num_long);
-	for(int left = 0, right = mid_long; left < mid_long; left++, right++) {
-	  outdat[top_off + left] = ((double)indat[bottom_off + right] * var.multiplier) + var.add_factor;
-	  outdat[bottom_off + right] = ((double)indat[top_off + left] * var.multiplier) + var.add_factor;
-	  outdat[bottom_off + left] = ((double)indat[top_off + right] * var.multiplier) + var.add_factor;
-	  outdat[top_off + right] = ((double)indat[bottom_off + left] * var.multiplier) + var.add_factor;
-	}
-      }
+      transmogrify_ll(&outdat[off], num_lat, num_long);
     }
 
     // Output old data
