@@ -118,9 +118,9 @@ void add_var_trans_entries(map<string, VarTrans>& var_trans, map<string, VarTran
   var_trans["rsds"] = VarTrans("irad", 0, 1);
   var_trans_future["rsds"] = VarTrans("irad", 0, 1);
 
-  // Sea ice thickness (convert from m to kg/m^2 by multiplying by mean density of sea ice (0.91MT/m^3)
-  var_trans["sit"] = VarTrans("sice", 0, 0.91);
-  var_trans_future["sit"] = VarTrans("sice", 0, 0.91);
+  // Sea ice thickness (convert from m to kg/m^2 by multiplying by mean density of sea ice (0.91MT/m^3 == 910kg/m^3)
+  var_trans["sit"] = VarTrans("sice", 0, 910);
+  var_trans_future["sit"] = VarTrans("sice", 0, 910);
 
   // Snow depth
   var_trans["snd"] = VarTrans("snod", 0, 1);
@@ -248,27 +248,34 @@ void copy_lats_longs_bnds(NcFile& in, NcFile& out) {
   NcVar* lats = copy_var(in.get_var("lat_bnds"), out);
   NcVar* longs = copy_var(in.get_var("lon_bnds"), out);
   assert(lats && longs);
+
   long* lat_edges = lats->edges();
   int lat_recsize = get_recsize_and_edges(lats, lat_edges);
   long* long_edges = longs->edges();
   int long_recsize = get_recsize_and_edges(longs, long_edges);
+
   double* latdat = new double[lat_recsize];
   double* longdat = new double[long_recsize];
   assert(lats->get(latdat, lat_edges));
   assert(longs->get(longdat, long_edges));
+
   
   // Reverse lats so north is at the top
   const int mid_lat = lat_recsize / 2;
   const int max_lat = lat_recsize - 2;
   for(int i = 0; i < mid_lat; i += 2) {
+    printf("%f, %f\n", latdat[i], latdat[max_lat - i]);
     swap(latdat[i], latdat[max_lat - i]);
+    printf("%f, %f\n", latdat[i], latdat[max_lat - i]);
     swap(latdat[i + 1], latdat[max_lat - i + 1]);
   }
   
   // Move longs around so 180W is on the left edge
   const int mid_long = long_recsize / 2;
   for(int i = 0; i < mid_long; i += 2) {
+    printf("%f, %f\n", longdat[i], longdat[i + mid_long]);
     swap(longdat[i], longdat[i + mid_long]);
+    printf("%f, %f\n", longdat[i], longdat[i + mid_long]);
     swap(longdat[i + 1],longdat[i + mid_long + 1]);
   }
 
@@ -303,11 +310,18 @@ void add_slmask(NcVar* invar, NcFile& out) {
   assert(lat && lon);
   NcVar* slmaskvar = out.add_var("slmask", ncInt, lat, lon);
   assert(slmaskvar);
+  float min = 1E20;
+  float max = -1;
 
   // Compute sea-land mask
   assert(invar->get(data, edges));
   for(int i = 0; i < framesize; i++) {
-    slmask[i] = (data[i] >= 50);
+    min = (min > data[i]) ? data[i] : min;
+    max = (max < data[i]) ? data[i] : max;
+  }
+  float threshold = 50;
+  for(int i = 0; i < framesize; i++) {
+    slmask[i] = (data[i] >= threshold);
   }
 
   const int num_lat = lat->size();
