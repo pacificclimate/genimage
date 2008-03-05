@@ -892,6 +892,8 @@ void loadData(DataManager& dm, list<ScatterVars* >& vars, list<LegendToken* >& l
 	if(grid_lats)
 	  delete[] grid_lats;
 	if(grid_longs)
+  disp.setScatterOffsets();
+  fprintf(outfd, "Scatter size: (%i)-(%i)\n", disp.img_width, disp.img_height);
 	  delete[] grid_longs;
 
 	slmask = new int[datasize];
