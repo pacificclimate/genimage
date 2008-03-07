@@ -46,6 +46,8 @@ public:
 
   void setOffsets(int offset_x, int offset_y);
 
+  void setClip(int x1, int y1, int x2, int y2);
+
   void setAlpha(int alpha) {
     gdImageAlphaBlending(img, alpha);
   }

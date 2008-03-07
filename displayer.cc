@@ -557,6 +557,7 @@ void Displayer::drawScale(Legend& leg_colours) {
   // Create the tick marks in the legend and label them
   double scale_factor = (leg_colours.range.max() - leg_colours.range.min()) / (num_leg_segments);
   char formatbuf[128];
+  c->setClip(true_plot_offset_x, true_plot_offset_y, true_plot_offset_x + true_plot_width, true_plot_offset_y + true_plot_height);
   char output[128];
   sprintf(formatbuf, "%%.%if", leg_dec_places);
   c->colour = 0x00000000;
@@ -589,6 +590,7 @@ void Displayer::drawIdentifyText() {
 
 void Displayer::drawCreditText() {
   int x, y;
+  c->setClip(0, 0, img_width, img_height);
 
   c->colour = 0x00000000;
   x = identify_offset_x + identify_width;

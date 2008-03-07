@@ -170,6 +170,10 @@ void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h, int col
   gdImageStringFT(img, brect, colour, (char*)fontfile.c_str(), size, angle, x, y, s);
 } 
 
+void Canvas::setClip(int x1, int y1, int x2, int y2) {
+  gdImageSetClip(img, x1, y1, x2, y2);
+}
+
 void Canvas::setOffsets(int offset_x, int offset_y) {
   this->offset_x = offset_x;
   this->offset_y = offset_y;
