@@ -80,6 +80,8 @@ gdImagePtr DataManager::get_basemap() {
   fclose(infile);
   return image;
 }
+  } else if(projection == "bc_albers") {
+    return false;
 
 bool DataManager::get_slmask(int* values) {
   if(!f)
