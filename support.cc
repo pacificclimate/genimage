@@ -324,6 +324,32 @@ void draw_polygon(int rows, int cols, double* grid, const double* lats, const do
   while(pts[0] < numpoints) {
     // Tries to find _some_ connection between points
     if(solve_connects(0, pts, connects, numpoints)) {
+  // Special case poly within gb
+  Point center(0, 0);
+  for(i = 0; i < numpoints; i++) {
+    center.x += points[i].x;
+    center.y += points[i].y;
+  }
+  center.x /= numpoints;
+  center.y /= numpoints;
+
+  int xgb, ygb;
+  if(find_in_grid_var(center.x, cols, lons, xgb, true) &&
+     find_in_grid_var(center.y, rows, lats, ygb, false)) {
+    bool all_inside = true;
+    for(i = 0; i < numpoints; i++) {
+      bool inside = ((lons[xgb * 2 + 1] >= points[i].x && points[i].x > lons[xgb * 2]) &&
+		     (lats[ygb * 2] >= points[i].y && points[i].y > lats[ygb * 2 + 1]));
+      all_inside &= inside;
+    }
+
+    if(all_inside) {
+      grid[(ygb * cols) + xgb] = 1.0;
+      return;
+    }
+  }
+     
+
       // Do intersect checking on TEMP lines for other TEMP lines
       remove_intercepts(pts[0], pts[1], points, connects, numpoints);
       remove_intercepts(pts[1], pts[2], points, connects, numpoints);
