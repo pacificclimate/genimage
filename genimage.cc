@@ -13,6 +13,7 @@
     * lat = ((-y + center_y) / height) * 180
     * lon = ((x - center_x) / width) * 360
     * x = ((lon / 360) * width) + center_x
+#include <gdal/gdal_priv.h>
     * y = ((-lat / 180) * height) + center_y
 */
 
@@ -44,6 +45,7 @@ void parseArgs(Config& c, Displayer& disp, DataManager& dm, int argc, char** arg
     { "output-file", 1, 0, 'o'},
     { "plot-type", 1, 0, 'p'},
     { "scenario-set", 1, 0, 'q'},
+  string proj4_string;
     { "resolution", 1, 0, 'r'},
     { "expt", 1, 0, 's'},
     { "timeslice", 1, 0, 't'},
@@ -250,6 +252,13 @@ void handleMap(Displayer& disp, DataManager& dm) {
   delete[] data;
 }
 
+  } else {
+    projPJ pj = pj_init_plus(d.proj4_string.c_str());
+    projUV uv;
+    uv.u = c.center.x * DEG_TO_RAD;
+    uv.v = c.center.y * DEG_TO_RAD;
+    projUV val = pj_fwd(uv, pj);
+    c.center = Point(val.u, val.v);
 void handleText(Displayer& disp, DataManager& dm) {
   dm.variable = dm.config.xvariable;
   dm.open_datafile();
@@ -1413,3 +1422,6 @@ int main(int argc, char ** argv) {
     handleScatterTimeslice(disp, dm, true, true);
     break;
     dm.config.percentiles = true;
+    if(!cf.readInto(d.proj4_string, "region_" + *beg + "_proj4string")) {
+      d.proj4_string = "";
+    }
