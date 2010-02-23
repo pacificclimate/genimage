@@ -4,6 +4,7 @@
 #include <list>
 #include "point.h"
 #include "range.h"
+#include <stdio.h>
 
 using namespace std;
 
