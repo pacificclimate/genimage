@@ -92,7 +92,7 @@ void add_var_trans_entries(map<string, VarTrans>& var_trans, map<string, VarTran
   var_trans["zg500"] = VarTrans("h500", 0, 1);
   var_trans_future["zg500"] = VarTrans("h500", 0, 1);
 
-  // Surface relative humidity (this needs to be extracted)
+  // Surface relative humidity (extracted)
   var_trans["hur1000"] = VarTrans("rhum", 0, 1);
   var_trans_future["hur1000"] = VarTrans("rhum", 0, 1);
 
@@ -365,14 +365,15 @@ int main(int argc, char** argv) {
   expt_trans["sresa1b"] = "A1B";
   expt_trans["sresa2"] = "A2";
   expt_trans["sresb1"] = "B1";
+  expt_trans["hist"] = "HIST";
 
   // Translate real dates into climatology dates
   date_trans["1961_1990"] = "1961_1990";
   date_trans["1971_2000"] = "1971_2000";
   date_trans["1981_2000"] = "1981_2000";
-  date_trans["2011_2040"] = "2020";
-  date_trans["2041_2070"] = "2050";
-  date_trans["2071_2100"] = "2080";
+  date_trans["2010_2039"] = "2020";
+  date_trans["2040_2069"] = "2050";
+  date_trans["2070_2099"] = "2080";
 
   add_var_trans_entries(var_trans, var_trans_future);
 
@@ -456,12 +457,13 @@ int main(int argc, char** argv) {
 	continue;
       }
 
-      VarTrans& var = (fr.expt == "20c3m") ? var_trans[fr.var] : var_trans_future[fr.var];
+      VarTrans& var = (fr.expt == "20c3m" || fr.expt == "hist") ? var_trans[fr.var] : var_trans_future[fr.var];
       if(fr.expt == "20c3m") {
 	expts.push_back(expt_trans["sresa1b"]);
 	expts.push_back(expt_trans["sresa2"]);
 	expts.push_back(expt_trans["sresb1"]);
       } else {
+	printf("Filename: %s, Expt: %s\n", filename.c_str(), fr.expt.c_str());
         assert(expt_trans.find(fr.expt) != expt_trans.end());
 	expts.push_back(expt_trans[fr.expt]);
       }

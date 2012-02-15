@@ -19,6 +19,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     delete[] tedges;
     
     start_offset = do_binary_search(r.min, numtimes, times);
+    printf("Start offset: %i\n", start_offset);
     if(start_offset == -1 || start_offset + (r.max - r.min) >= numtimes) {
       printf("Specified offsets are not within range of data set: %i to %i, start is %i, max is %i\n", r.min, r.max, times[0], times[numtimes - 1]);
       delete[] times;
@@ -168,12 +169,10 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     }
 
     // Divide grids by # days
-    // WARNING: DOES NOT HANDLE MISSING VALUES
-    // FIXME BUG BUG BUG
-    // FIXME MAYBE USE DAYS OF MONTHS?
+    int ann_days = 0;
     for(int i = JAN; i <= DEC; i++) {
-      divide_grid_by_scalar(rec_size, data + (rec_size * i), days[i], missing);
       add_to_grid(rec_size, data + (rec_size * i), data + (rec_size * ANN), missing);
+      ann_days += days[i];
     }
     add_to_grid(rec_size, data + (rec_size * DEC), data + (rec_size * DJF), missing);
     add_to_grid(rec_size, data + (rec_size * JAN), data + (rec_size * DJF), missing);
@@ -188,11 +187,15 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     add_to_grid(rec_size, data + (rec_size * OCT), data + (rec_size * SON), missing);
     add_to_grid(rec_size, data + (rec_size * NOV), data + (rec_size * SON), missing);
 
-    divide_grid_by_scalar(rec_size, data + (rec_size * DJF), 3, missing);
-    divide_grid_by_scalar(rec_size, data + (rec_size * MAM), 3, missing);
-    divide_grid_by_scalar(rec_size, data + (rec_size * JJA), 3, missing);
-    divide_grid_by_scalar(rec_size, data + (rec_size * SON), 3, missing);
-    divide_grid_by_scalar(rec_size, data + (rec_size * ANN), 12, missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * DJF), days[DEC] + days[JAN] + days[FEB], missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * MAM), days[MAR] + days[APR] + days[MAY], missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * JJA), days[JUN] + days[JUL] + days[AUG], missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * SON), days[SEP] + days[OCT] + days[NOV], missing);
+    divide_grid_by_scalar(rec_size, data + (rec_size * ANN), ann_days, missing);
+
+    for(int i = JAN; i <= DEC; i++) {
+      divide_grid_by_scalar(rec_size, data + (rec_size * i), days[i], missing);
+    }
   }
   
   delete[] edges;
@@ -212,7 +215,7 @@ int main(int argc, char** argv) {
   char buf[10240];
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
-  ncopts = NC_VERBOSE;
+  NcError n(NcError::silent_nonfatal);
 
   if(argc < 2) {
     printf("Usage: create_climatologies <output_path>\n");

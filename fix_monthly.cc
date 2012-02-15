@@ -17,7 +17,7 @@ void remove_dups(list<DataRecord>& drlist) {
 	++dit;
       } else {
 	// Duplicate record without one being a "corrected" record. Error.
-	printf("Duplicate record found!\n");
+	printf("Duplicate record found; file %s and file %s\n", (*dit).f.filename.c_str(), (*old).f.filename.c_str());
 	assert(0 && "Duplicate record error");
       }
       continue;
@@ -33,9 +33,13 @@ void populate_drlist(list<FileRecord>& l, list<DataRecord>& drlist) {
     FileRecord& f = *li;
     NcVar* t;
     NcVar* v;
+    if(!f.open()) {
+      printf("Failed to reopen file %s\n", f.filename.c_str());
+      assert(false);
+    }
     assert((v = f.f->get_var(f.var.c_str())));
     if(f.timeless) {
-      DataRecord dr(*li, v, 0, 0);
+      DataRecord dr(*li, 0, 0);
       drlist.push_back(dr);
     } else {
       assert((t = f.f->get_var("time")));
@@ -50,12 +54,13 @@ void populate_drlist(list<FileRecord>& l, list<DataRecord>& drlist) {
 
       for(i = 0; i < len; i++) {
 	//printf("Start day: %i, Day: %f\n", f->start_day, days[i]);
-	DataRecord dr(*li, v, i, get_total_months(f.calendar_type, (int)(f.start_day + days[i])));
+	DataRecord dr(*li, i, get_total_months(f.calendar_type, (int)(f.start_day + days[i])));
 
 	drlist.push_back(dr);
       }
       delete[] days;
     }
+    assert(f.close());
   }
 }
 
@@ -88,6 +93,8 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
   }
 
   ofile = path + "/" + ofile;
+
+  f.open();
 
   NcFile out(ofile.c_str(), NcFile::Replace);
   NcFile& in = *(f.f);
@@ -146,16 +153,22 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
   list<DataRecord>::const_iterator ts;
   vector<int> months;
 
+  f.close();
+
   // FIXME: Improve method of calculating output offset (use initial month?)
   int j = 0;
 
   for(ts = drlist.begin(); ts != drlist.end(); ++ts) {
     const DataRecord& d = *ts;
+    NcVar* v;
+    d.f.open();
+    assert((v = d.f.f->get_var(f.var.c_str())));
+
     float bias = 0;
     float scale_factor = 1;
-
-    NcAtt* var_add_offset = d.v->get_att("add_offset");
-    NcAtt* var_scale_factor = d.v->get_att("scale_factor");
+    
+    NcAtt* var_add_offset = v->get_att("add_offset");
+    NcAtt* var_scale_factor = v->get_att("scale_factor");
 
     if(var_add_offset) {
       bias += -var_add_offset->as_float(0);
@@ -168,28 +181,29 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
     months.push_back(d.month);
 
     // Add the data to the output variable
-    assert(d.v->set_cur(d.offset));
+    assert(v->set_cur(d.offset));
     assert(outvar->set_cur(j));
 
     // Add the data to the output variable
-    switch(d.v->type()) {
+    switch(v->type()) {
     case ncByte:
     case ncChar:
     case ncShort:
-      copy_to_float(d.v, outvar, recsize, edges, (short*)ddata, fdata, scale_factor, bias);
+      copy_to_float(v, outvar, recsize, edges, (short*)ddata, fdata, scale_factor, bias);
       break;
     case ncLong:
-      copy_to_float(d.v, outvar, recsize, edges, (int*)ddata, fdata, scale_factor, bias);
+      copy_to_float(v, outvar, recsize, edges, (int*)ddata, fdata, scale_factor, bias);
       break;
     case ncFloat:
-      copy_float_to_float(d.v, outvar, recsize, edges, fdata);
+      copy_float_to_float(v, outvar, recsize, edges, fdata);
       break;
     case ncDouble:
-      copy_double_to_float(d.v, outvar, recsize, edges, ddata, fdata);
+      copy_double_to_float(v, outvar, recsize, edges, ddata, fdata);
       break;
     default:
       assert(false);
     }
+    d.f.close();
     j++;
   }
   delete[] fdata;
@@ -212,7 +226,7 @@ int main(int argc, char** argv) {
   bool filename_date_parsing = false;
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
-  ncopts = NC_VERBOSE;
+  NcError n(NcError::silent_nonfatal);
 
   if(argc < 2) {
     printf("Usage: fix_missing <output_path> [<filename date parsing boolean>]\n");
@@ -240,6 +254,7 @@ int main(int argc, char** argv) {
 	emit_and_cleanup(l, output_path);
       }
     }
+    assert(fr.close());
     l.push_back(fr);
   }
   emit_and_cleanup(l, output_path);
