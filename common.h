@@ -41,6 +41,7 @@ const int leap_dpm[] = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 const int equal_dpm[] = { 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30 };
 
 vector<int> get_time_values(NcFile& f, int start_day);
+float get_missing_value_float(NcVar* v);
 double get_missing_value(NcVar* v);
 int do_binary_search(int number, int max, const int array[]);
 int find_slot_in_range(int number, int max, const int array[]);
@@ -331,10 +332,14 @@ public:
 	    if(do_time_calcs) {
 	      // Load in the base month
 	      if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
-		printf("Failure to match start date\n");
-		delete cal;
-		delete units;
-		return;
+		if(sscanf(calendar_start, "months since %i-%i", &start_year, &start_month) == 2) {
+		  start_day = 1;
+		} else {
+		  printf("Failure to match start date\n");
+		  delete cal;
+		  delete units;
+		  return;
+		}
 	      }
 	      printf("start y-m-d: %d-%d-%d\n", start_year, start_month, start_day);
 	      this->start_day = date2days(calendar_type, start_year, start_month, start_day);

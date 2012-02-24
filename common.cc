@@ -40,6 +40,20 @@ double get_missing_value(NcVar* v) {
   return(miss);
 }
 
+float get_missing_value_float(NcVar* v) {
+  float miss = 1e20;
+  NcAtt* fillvalue_att = v->get_att("_FillValue");
+  NcAtt* missing_att = v->get_att("missing_value");
+  if(fillvalue_att) {
+    miss = fillvalue_att->as_float(0);
+    delete fillvalue_att;
+  } else if(missing_att) {
+    miss = missing_att->as_float(0);
+    delete missing_att;
+  }
+  return(miss);
+}
+
 int do_binary_search(int number, int max, const int array[]) {
   int min = 0;
   max--;
