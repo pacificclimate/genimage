@@ -230,8 +230,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   NcVar* outvar = 0;
   long* edges = invar->edges();
   int rec_size = get_recsize_and_edges(invar, edges);
-  int data_size = rec_size * MAX_TOY;
-  float* data = new float[data_size];
+  float* data = new float[rec_size * MAX_TOY];
   float* indata = new float[rec_size];
 
   if(f.timeless) {
@@ -239,18 +238,15 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     NcDim* lon = out.get_dim("lon");
     NcDim* toy = out.add_dim("time");
     NcVar* time = out.add_var("time", ncDouble, toy);
+    assert(time);
     f.calendar_type = "gregorian";
     f.start_day = date2days(f.calendar_type, r.min / 12, r.min % 12 + 1, 1);
-    assert(time);
     outvar = out.add_var(invar->name(), invar->type(), toy, lat, lon);
     copy_atts(invar, outvar);
     invar->get(indata, edges);
     // Just copy the damned thing
-    for(int i = 0; i < MAX_TOY; i++) {
-      for(int j = 0; j < rec_size; j++) {
-	data[(i * rec_size) + j] = indata[j];
-      }
-    }
+    for(int i = 0; i < MAX_TOY; i++)
+      std::copy(indata, &indata[rec_size], &data[i * rec_size]);
   } else {
     NcVar* time = out.add_var("time", ncDouble, out.get_dim("time"));
     assert(time);
