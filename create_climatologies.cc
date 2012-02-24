@@ -3,12 +3,12 @@
 #include "common.h"
 #include <boost/lexical_cast.hpp>
 
-int* get_time_as_months_since_0000(const FileRecord& f, NcFile& in) {
+vector<int> get_time_as_months_since_0000(const FileRecord& f, NcFile& in) {
   NcVar* intime = in.get_var("time");
   long* tedges = intime->edges();
   int numtimes = intime->num_vals();
-  int* times = new int[numtimes];
-  
+  vector<int> times(numtimes);
+
   NcAtt* time_units_att = intime->get_att("units");
   assert(time_units_att);
   char* tu_temp = time_units_att->as_string(0);
@@ -23,7 +23,7 @@ int* get_time_as_months_since_0000(const FileRecord& f, NcFile& in) {
       times[i] = get_total_months(f.calendar_type, time_days[i]);
   } else {
     // Months...
-    intime->get(times, tedges);
+    intime->get(&times[0], tedges);
   }
   delete[] tedges;
   return times;
@@ -72,13 +72,14 @@ void copy_all_but_time_and_var(const FileRecord& f, NcFile& in, NcFile& out) {
   }
 }
 
-void compute_climatology(NcVar* invar, const float missing, float* data, float* indata, const int* times, const int numtimes, const int start_offset, const int rec_size, const long* edges, const string calendar_type, const list<int>& omitlist, const Range<int>& r) {
+void compute_climatology(NcVar* invar, const float missing, float* data, const vector<int>& times, const int start_offset, const int rec_size, const long* edges, const string calendar_type, const list<int>& omitlist, const Range<int>& r) {
+  float* indata = new float[rec_size];
   int days[MAX_TOY];
   std::fill(&data[0], &data[rec_size * MAX_TOY], 0.0f);
   std::fill(&days[0], &days[MAX_TOY], 0);
 
   list<int>::const_iterator omitted = omitlist.begin();
-  for(int i = start_offset; i < numtimes && times[i] <= r.max; i++) {
+  for(unsigned int i = start_offset; i < times.size() && times[i] <= r.max; i++) {
     assert(invar->set_cur(i));
     assert(invar->get(indata, edges));
     int days_in_month;
@@ -143,6 +144,7 @@ void compute_climatology(NcVar* invar, const float missing, float* data, float* 
   for(int i = JAN; i <= DEC; i++) {
     divide_grid_by_scalar(rec_size, data + (rec_size * i), (float)days[i], missing);
   }
+  delete[] indata;
 }
 
 void add_cf_compliant_time_dim(NcFile& out, const FileRecord& f, NcVar* outvar, const Range<int>& r) {
@@ -154,6 +156,7 @@ void add_cf_compliant_time_dim(NcFile& out, const FileRecord& f, NcVar* outvar, 
   char* buf = new char[100];
   sprintf(buf, "days since %i-%i-%i", total_months_start_day / 12, total_months_start_day % 12 + 1, 1);
   time_var->add_att("units", buf);
+  delete[] buf;
 
   string clim_bnds_name = "climatology_bounds";
   string bnds_name = "bnds";
@@ -195,21 +198,18 @@ void add_cf_compliant_time_dim(NcFile& out, const FileRecord& f, NcVar* outvar, 
 }
 
 void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list<int>& omitlist) {
-  int numtimes = 1;
   int start_offset = 0;
-  int* times = 0;
+  vector<int> times;
   NcFile& in = *(f.f);
   assert(in.is_valid());
   // Get time
   if(!f.timeless) {
     times = get_time_as_months_since_0000(f, in);
-    numtimes = in.get_dim("time")->size();
 
-    start_offset = do_binary_search(r.min, numtimes, times);
+    start_offset = do_binary_search(r.min, times.size(), &times[0]);
     printf("Start offset: %i\n", start_offset);
-    if(start_offset == -1 || start_offset + (r.max - r.min) >= numtimes) {
-      printf("Specified offsets are not within range of data set: %i to %i, start is %i, max is %i\n", r.min, r.max, times[0], times[numtimes - 1]);
-      delete[] times;
+    if(start_offset == -1 || (unsigned int)(start_offset + (r.max - r.min)) >= times.size()) {
+      printf("Specified offsets are not within range of data set: %i to %i, start is %i, max is %i\n", r.min, r.max, times[0], times[times.size() - 1]);
       return;
     }
   }
@@ -221,7 +221,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   out.set_fill(NcFile::NoFill);
 
   if(!f.timeless)
-    printf("Start: %i, End: %i, Max: %i\n", start_offset, start_offset + (r.max - r.min + 1), numtimes - 1);
+    printf("Start: %i, End: %i, Max: %i\n", start_offset, start_offset + (r.max - r.min + 1), (int)times.size() - 1);
 
   copy_all_but_time_and_var(f, in, out);
 
@@ -231,9 +231,9 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
   long* edges = invar->edges();
   int rec_size = get_recsize_and_edges(invar, edges);
   float* data = new float[rec_size * MAX_TOY];
-  float* indata = new float[rec_size];
 
   if(f.timeless) {
+    float* indata = new float[rec_size];
     NcDim* lat = out.get_dim("lat");
     NcDim* lon = out.get_dim("lon");
     NcDim* toy = out.add_dim("time");
@@ -247,6 +247,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
     // Just copy the damned thing
     for(int i = 0; i < MAX_TOY; i++)
       std::copy(indata, &indata[rec_size], &data[i * rec_size]);
+    delete[] indata;
   } else {
     NcVar* time = out.add_var("time", ncDouble, out.get_dim("time"));
     assert(time);
@@ -259,7 +260,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
 
     float missing = get_missing_value_float(outvar);
 
-    compute_climatology(invar, missing, data, indata, times, numtimes, start_offset, rec_size, edges, f.calendar_type, omitlist, r);
+    compute_climatology(invar, missing, data, times, start_offset, rec_size, edges, f.calendar_type, omitlist, r);
   }
 
   add_cf_compliant_time_dim(out, f, outvar, r);
@@ -270,10 +271,7 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
 
   delete[] out_edges;
   delete[] edges;
-  delete[] indata;
   delete[] data;
-  if(times)
-    delete[] times;
 }
 
 int main(int argc, char** argv) {

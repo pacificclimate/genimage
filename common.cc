@@ -51,6 +51,8 @@ float get_missing_value_float(NcVar* v) {
     miss = missing_att->as_float(0);
     delete missing_att;
   }
+  if(missing_att)
+    delete missing_att;
   return(miss);
 }
 
