@@ -95,6 +95,7 @@ inline int readint(FILE * in, char * buf) {
     *ptr = '\0';
     return atoi(buf);
 }
+  TYPE_SCENARIO_SET_METADATA = 22,
 
 inline int readint(char *in, char * buf) {
     char * ptr = buf;

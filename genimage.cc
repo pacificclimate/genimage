@@ -1214,6 +1214,19 @@ void handleScatterTimeslice(Displayer& disp, DataManager& dm, bool textOnly = fa
 
   list<LegendToken* >::iterator lt_iter;
   for(lt_iter = leg_tokens.begin(); lt_iter != leg_tokens.end(); ++lt_iter) {
+
+vector<MetaData> getScenarioSetMetaData(DataManager& dm, list<ScatterVars* >& vars) {
+  list<ScatterVars*>::iterator vars_iter;
+  vector<MetaData> metadata_results(vars.size());
+
+  for(vars_iter = vars.begin(); vars_iter != vars.end(); vars_iter++) {
+    DataSpec s(*(*vars_iter), dm.config.timeofyear, false, dm.config.use_anomaly, dm.config.pct_change_data);
+    MetaData my = calcMetaData(dm, s, true, true, true);
+    metadata_results.push_back(my);
+  }
+  return metadata_results;
+}
+
     delete *lt_iter;
   }
 }
@@ -1425,3 +1438,101 @@ int main(int argc, char ** argv) {
     if(!cf.readInto(d.proj4_string, "region_" + *beg + "_proj4string")) {
       d.proj4_string = "";
     }
+void handleScenarioSetMetadata(DataManager& dm) {
+  vector<double > percentiles = { 0.9, 0.75, 0.5, 0.25, 0.1 };
+  vector<string > percentile_names = { "90th percentile", "75th percentile", "Median", "25th percentile", "10th percentile" };
+  int count = 0, var_offset = -1;
+
+  const DataSpec s(dm.config.model, dm.config.expt, dm.config.timeslice, dm.config.xvariable, dm.config.timeofyear);
+
+  // Read in GCMINFO file
+  list<vector<string> > gcminfo;
+  readGCMInfo(dm, gcminfo);
+  list<vector<string> >::iterator beg = gcminfo.begin();
+
+  if(dm.config.yvariable == "") {
+    fprintf(stderr, "genimage: error: Y variable must be set for plots\n");
+    exit(1);
+  }
+
+  // Read header and identify variable
+  for(count = 0; count < GCMINFO_COLS; ++count) {
+    if((*beg)[count] == dm.config.yvariable)
+      var_offset = count;
+  }
+  ++beg;
+  assert(var_offset >= 0);
+
+  fprintf(stderr, "ANOMALY MODE: %i\n", dm.config.use_anomaly);
+
+  // Create a list of the available expts
+  list<int>::const_iterator ssb = dm.config.scenario_set.begin();
+  list<ScatterVars* > vars;
+  unsigned int gcm_time_off = ((dm.config.timeslice == "2020") ? S2020_OFFSET : ((dm.config.timeslice == "2050") ? S2050_OFFSET : ((dm.config.timeslice == "2080") ? S2080_OFFSET : 0)));
+  for(int i = 0; beg != gcminfo.end() && ssb != dm.config.scenario_set.end(); ++beg, ++i) {
+    string model = (*beg)[MODEL_OFFSET];
+    string expt = (*beg)[EXPT_OFFSET];
+    bool ensemble = (expt.substr(2, 1) == "x");
+    bool var_available = is_available((*beg)[var_offset]);
+    bool ts_available = is_available((*beg)[gcm_time_off]);
+    bool abs_data = (expt.substr(0, 3) == "ABS");
+
+    if(var_available && ts_available && !(dm.config.use_anomaly == ANOMALY && abs_data) && *ssb == i && !ensemble)
+	vars.push_back(new ScatterVars(model, expt, dm.config.timeslice, "", dm.config.yvariable));
+
+    if(*ssb == i)
+      ++ssb;
+  }
+
+  vector<MetaData > md = getScenarioSetMetaData(dm, vars);
+  
+  vector<double> spatial_min(md.size()), spatial_max(md.size()), spatial_mean(md.size()), spatial_median(md.size()), spatial_sd(md.size());
+  vector<string> expt_name(vars.size());
+  
+  assert(md.size() == vars.size());
+
+  for(vector<MetaData>::const_iterator md_iter = md.begin(); md_iter != md.end(); ++md_iter) {
+    const MetaData& md_elem = *md_iter;
+    spatial_min.push_back(md_elem.datarange.min());
+    spatial_max.push_back(md_elem.datarange.max());
+    spatial_mean.push_back(md_elem.wmean);
+    spatial_median.push_back(md_elem.wmedian);
+    spatial_sd.push_back(md_elem.stddev);
+  }
+  
+  for(list<ScatterVars*>::const_iterator vars_iter = vars.begin(); vars_iter != vars.end(); ++vars_iter) {
+    expt_name.push_back((*vars_iter)->model + " " + (*vars_iter)->expt);
+    delete *vars_iter;
+  }
+  
+  // Generate percentiles
+  vector<double> spatial_min_quantiles = quantile(spatial_min, percentiles);
+  spatial_min.insert(spatial_min.end(), spatial_min_quantiles.begin(), spatial_min_quantiles.end());
+  vector<double> spatial_max_quantiles = quantile(spatial_max, percentiles);
+  spatial_max.insert(spatial_max.end(), spatial_max_quantiles.begin(), spatial_max_quantiles.end());
+  vector<double> spatial_mean_quantiles = quantile(spatial_mean, percentiles);
+  spatial_mean.insert(spatial_mean.end(), spatial_mean_quantiles.begin(), spatial_mean_quantiles.end());
+  vector<double> spatial_median_quantiles = quantile(spatial_median, percentiles);
+  spatial_median.insert(spatial_median.end(), spatial_median_quantiles.begin(), spatial_median_quantiles.end());
+  vector<double> spatial_sd_quantiles = quantile(spatial_sd, percentiles);
+  spatial_sd.insert(spatial_sd.end(), spatial_sd_quantiles.begin(), spatial_sd_quantiles.end());
+
+  expt_name.insert(expt_name.end(), percentile_names.begin(), percentile_names.end());
+
+  FILE* out = fopen(dm.config.outfile.c_str(), "w");
+  if(!out) {
+    fprintf(stderr, "Couldn't open file %s\n", dm.config.outfile.c_str());
+    exit(1);
+  }
+  
+  fprintf(out, "Experiment,min,max,mean,median,sd");
+  for(size_t i = 0; i < md.size(); ++i) {
+    fprintf(out, "%s,%0.6f,%0.6f,%0.6f,%0.6f,%0.6f\n", expt_name[i].c_str(), spatial_min[i], spatial_max[i], spatial_mean[i], spatial_median[i], spatial_sd[i]);
+  }      
+  fclose(out);
+}
+
+
+  case TYPE_SCENARIO_SET_METADATA:
+    handleScenarioSetMetadata(dm);
+    break;
