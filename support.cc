@@ -384,3 +384,5 @@ double triangle_area(Point p1, Point p2, Point p3) {
   // Eqn for area of triangle
   return sqrt((a + (b + c) ) * (c - (a - b) ) * (c + (a - b) ) * (a + (b - c) )) / 4;
 }
+
+  // Note: min_y and max_y are the indices of the minimum and maximum VALUES of Y, not (necessarily) the minimum and maximum indices covered by the polygon.
