@@ -1,9 +1,11 @@
+#include <assert.h>
 #include <iostream>
 #include <stdio.h>
 #include "genimage.h"
 #include "displayer.h"
 #include "legend.h"
 #include "range.h"
+#include "datamanager.h"
 #include "legends.h"
 
 // Set offsets and such
@@ -61,20 +63,97 @@ void Displayer::setScatterOffsets() {
   leg_width = SCATTER_LEG_WIDTH + 2 * BORDER_WIDTH;
   leg_height = plot_height;
 
-  leg_offset_x = plot_offset_x + plot_width + XAXIS_EXTRA_WIDTH;
-  leg_offset_y = plot_offset_y;
-
   xaxis_width = yaxis_width + plot_width + leg_width + XAXIS_EXTRA_WIDTH;
-  xaxis_height = XAXIS_HEIGHT + XAXIS_TITLE_HEIGHT;
+  xaxis_height = XAXIS_HEIGHT + XAXIS_TITLE_HEIGHT + 20;
 
   xaxis_offset_x = 0;
   xaxis_offset_y = yaxis_height + yaxis_offset_y;
 
   identify_width = xaxis_width;
   identify_height = IDENTIFY_HEIGHT;
-
+  
   img_width = xaxis_width;
   img_height = yaxis_height + xaxis_height + identify_height;
+
+  leg_offset_x = plot_offset_x + plot_width + XAXIS_EXTRA_WIDTH;
+  leg_offset_y = plot_offset_y;
+
+  identify_offset_x = 0;
+  identify_offset_y = xaxis_offset_y + xaxis_height;
+}
+
+// Set offsets and such
+void Displayer::setBandsOffsets() {
+  latlon_plot = false;
+
+  plot_width = BAND_WIDTH + 2 * BORDER_WIDTH;
+  plot_height = BAND_HEIGHT + 2 * BORDER_WIDTH;
+
+  yaxis_width = YAXIS_WIDTH + YAXIS_TITLE_WIDTH;
+  yaxis_height = plot_height + YAXIS_EXTRA_HEIGHT;
+
+  plot_offset_x = yaxis_width;
+  plot_offset_y = YAXIS_EXTRA_HEIGHT;
+
+  yaxis_offset_x = 0;
+  yaxis_offset_y = 0;
+
+  leg_width = 0;
+  leg_height = 0;
+
+  xaxis_width = yaxis_width + plot_width + leg_width + XAXIS_EXTRA_WIDTH;
+  xaxis_height = XAXIS_HEIGHT + XAXIS_TITLE_HEIGHT + 0;
+
+  xaxis_offset_x = 0;
+  xaxis_offset_y = yaxis_height + yaxis_offset_y;
+
+  identify_width = xaxis_width;
+  identify_height = IDENTIFY_HEIGHT;
+  
+  img_width = xaxis_width;
+  img_height = yaxis_height + xaxis_height + identify_height;
+
+  leg_offset_x = plot_offset_x + plot_width + XAXIS_EXTRA_WIDTH;
+  leg_offset_y = plot_offset_y;
+
+  identify_offset_x = 0;
+  identify_offset_y = xaxis_offset_y + xaxis_height;
+}
+
+void Displayer::setStickplotOffsets() {
+  latlon_plot = false;
+
+  plot_width = STICK_WIDTH + 2 * BORDER_WIDTH;
+  plot_height = STICK_HEIGHT + 2 * BORDER_WIDTH;
+
+  plot_offset_x = YAXIS_WIDTH + YAXIS_TITLE_WIDTH;
+  plot_offset_y = YAXIS_EXTRA_HEIGHT;
+
+  yaxis_width = YAXIS_WIDTH + YAXIS_TITLE_WIDTH;
+  yaxis_height = plot_height + YAXIS_EXTRA_HEIGHT;
+
+  yaxis_offset_x = 0;
+  yaxis_offset_y = 0;
+
+  // FIXME:  leg_width etc probably need to be set anyways
+  /*
+  leg_width = SCATTER_LEG_WIDTH + 2 * BORDER_WIDTH;
+  leg_height = plot_height;
+  */
+  xaxis_width = yaxis_width + plot_width + /* leg_width + */ XAXIS_EXTRA_WIDTH;
+  xaxis_height = XAXIS_HEIGHT + XAXIS_TITLE_HEIGHT + 20;
+
+  xaxis_offset_x = 0;
+  xaxis_offset_y = yaxis_height + yaxis_offset_y;
+
+  identify_width = xaxis_width;
+  identify_height = IDENTIFY_HEIGHT;
+  
+  img_width = xaxis_width;
+  img_height = yaxis_height + xaxis_height + identify_height;
+
+  leg_offset_x = plot_offset_x + plot_width + XAXIS_EXTRA_WIDTH;
+  leg_offset_y = plot_offset_y;
 
   identify_offset_x = 0;
   identify_offset_y = xaxis_offset_y + xaxis_height;
@@ -86,10 +165,34 @@ void Displayer::copyMap(const gdImagePtr basemap) {
 }
 
 #define LINE_HEIGHT 11
+#define BP_LINE_HEIGHT 12
+
+// Draw a legend on the map mapping symbols to names (for plots)
+void Displayer::drawBoxPlotLegend() {
+  c->colour = 0x00FFFFFF;
+  c->setAlpha(0);
+  c->fillRect(leg_offset_x, yaxis_offset_y, leg_width, leg_offset_y - yaxis_offset_y);
+  c->fillRect(leg_offset_x, leg_offset_y, leg_width, leg_height);
+  c->setAlpha(1);
+  c->colour = 0x00000000;
+
+  c->fontsize = 9;
+  int x = leg_offset_x;
+  int y = leg_offset_y + 1;
+  c->drawText("Whiskers:", x, y, Canvas::TOP, Canvas::LEFT);
+  c->drawText("min/max unless + at top", x + 10, y + BP_LINE_HEIGHT * 1, Canvas::TOP, Canvas::LEFT);
+  c->drawText("+/- 1.5 times IQR if + at top", x + 10, y + BP_LINE_HEIGHT * 2, Canvas::TOP, Canvas::LEFT);
+
+  c->drawText("Box:", x, y + BP_LINE_HEIGHT * 4, Canvas::TOP, Canvas::LEFT);
+  c->drawText("25th and 75th percentile", x + 10, y + BP_LINE_HEIGHT * 5, Canvas::TOP, Canvas::LEFT);
+  c->drawText("line: median", x + 10, y + BP_LINE_HEIGHT * 6, Canvas::TOP, Canvas::LEFT);
+
+  c->drawText("IQR: interquartile range", x, y + BP_LINE_HEIGHT * 9, Canvas::TOP, Canvas::LEFT);
+}
 
 // Draw a legend on the map mapping symbols to names (for plots)
 void Displayer::drawLegend(list<LegendToken* >& vars) {
-  const int true_leg_height = leg_height - 2 * BORDER_WIDTH;
+  const int true_leg_height = vars.size() * LINE_HEIGHT;
   const int true_leg_width = leg_width - 2 * BORDER_WIDTH;
 
   const int true_leg_offset_x = leg_offset_x + BORDER_WIDTH;
@@ -99,7 +202,14 @@ void Displayer::drawLegend(list<LegendToken* >& vars) {
   c->setAlpha(0);
   c->fillRect(leg_offset_x, yaxis_offset_y, leg_width, leg_offset_y - yaxis_offset_y);
   c->fillRect(true_leg_offset_x, true_leg_offset_y, true_leg_width, true_leg_height);
+  c->fillRect(leg_offset_x, true_leg_offset_y + true_leg_height + BORDER_WIDTH, 
+	      leg_width, leg_height - true_leg_height - BORDER_WIDTH * 2);
+  
+  c->colour = 0x00000000;
+  c->drawRect(true_leg_offset_x - BORDER_WIDTH, true_leg_offset_y - BORDER_WIDTH,
+	      true_leg_width + 2 * BORDER_WIDTH, true_leg_height + 2 * BORDER_WIDTH);
   c->setAlpha(1);
+
 
   list<LegendToken* >::iterator liter = vars.begin();
 
@@ -141,11 +251,18 @@ void Displayer::createCanvas(string fontfile) {
   c = new Canvas(fontfile, img_width, img_height);
 }
 
+
+// JMS: FIXME:  Fixed temporarily, needs a looking over!
 int dec_places_needed(double value, int dec_places) {
+  value = fabs(value);
+  if (value == 0.0)
+    return 1;
+
   while(value < 1) {
     dec_places++;
     value *= 10;
   }
+
   return dec_places;
 }
 
@@ -193,7 +310,14 @@ void Displayer::drawScatterGrid(const Range& xrange, const Range& yrange) {
 void Displayer::drawAxisTitles() {
   c->fontsize = 12;
   c->drawText(xaxis_text, plot_offset_x + ((plot_width - 1) / 2), xaxis_offset_y + xaxis_height - 1, Canvas::BOTTOM, Canvas::CENTER);
-  c->drawText(yaxis_text, yaxis_offset_x + 5, plot_offset_y + ((plot_width - 1) / 2), Canvas::MIDDLE, Canvas::LEFT, 0.5 * M_PI);
+  c->drawText(yaxis_text, yaxis_offset_x + 5, plot_offset_y + ((plot_height - 1) / 2), Canvas::MIDDLE, Canvas::LEFT, 0.5 * M_PI);
+}
+
+void Displayer::fillTickAreas() {
+  c->setAlpha(0);
+  c->fillRect(xaxis_offset_x, xaxis_offset_y, xaxis_width, xaxis_height, 0x00FFFFFF);
+  c->fillRect(yaxis_offset_x, yaxis_offset_y, yaxis_width, yaxis_height, 0x00FFFFFF);
+  c->setAlpha(1);
 }
   
 // Draw (and possibly label) tickmarks on the map/plot
@@ -206,11 +330,9 @@ void Displayer::drawTicks(const Range& xrange, const Range& yrange) {
   double max_y = yrange.max();
   char format[32];
 
-  c->setAlpha(0);
-  c->fillRect(xaxis_offset_x, xaxis_offset_y, xaxis_width, xaxis_height, 0x00FFFFFF);
-  c->setAlpha(1);
+  fillTickAreas();
   c->colour = 0x00000000;
-  c->fontsize = 10;
+  c->fontsize = 9;
 
   // Set the legend's decimal places
   sprintf(format, "%%0.%if%%s", dec_places_needed(x_text_spacing, 0));
@@ -228,7 +350,7 @@ void Displayer::drawTicks(const Range& xrange, const Range& yrange) {
     if(!latlon_plot || i == 0) {
       sprintf(output, format, i, "");
     } else if(i < 0) {
-      sprintf(output, format, i, "W");
+      sprintf(output, format, -i, "W");
     } else if(i > 0) {
       sprintf(output, format, i, "E");
     }
@@ -236,10 +358,6 @@ void Displayer::drawTicks(const Range& xrange, const Range& yrange) {
     c->drawText(output, x, y + 4, Canvas::TOP, Canvas::CENTER);
   }
 
-  c->setAlpha(0);
-  c->fillRect(yaxis_offset_x, yaxis_offset_y, yaxis_width, yaxis_height, 0x00FFFFFF);
-  c->setAlpha(1);
-    
   // Lat points
   // Set the legend's decimal places
   sprintf(format, "%%0.%if%%s", dec_places_needed(y_text_spacing, 0));
@@ -257,13 +375,85 @@ void Displayer::drawTicks(const Range& xrange, const Range& yrange) {
     if(!latlon_plot || i == 0) {
       sprintf(output, format, i, "");
     } else if(i < 0) {
-      sprintf(output, format, fabs(i), "S");
+      sprintf(output, format, -i, "S");
     } else if(i > 0) {
       sprintf(output, format, i, "N");
     }
 
     c->drawText(output, x + yaxis_width - 4, y, Canvas::MIDDLE, Canvas::RIGHT);
   }
+}
+
+// Draw (and possibly label) tickmarks on the map/plot -- Y AXIS ONLY
+void Displayer::drawYTicks(const Range& xrange, const Range& yrange) {
+  // Lon grid
+  double factor = (plot_width - 1) / xrange.range();
+  //  double min_x = xrange.min();
+  //  double max_x = xrange.max();
+  double min_y = yrange.min();
+  double max_y = yrange.max();
+  char format[32];
+
+  fillTickAreas();
+  c->colour = 0x00000000;
+  c->fontsize = 10;
+
+  // Set the legend's decimal places
+  sprintf(format, "%%0.%if%%s", dec_places_needed(x_text_spacing, 0));
+/*
+  for(double i = floor(max_x / x_text_spacing) * x_text_spacing; i >= min_x; i -= x_text_spacing) {
+    const int x = plot_offset_x + (int)round((i - min_x) * factor);
+    const int y = xaxis_offset_y;
+
+    // Put bottom tick marks on
+    c->drawLine(x, y, x, y + 3);
+    
+    // Format the lon string nicely
+    char output[32];
+
+    if(!latlon_plot || i == 0) {
+      sprintf(output, format, i, "");
+    } else if(i < 0) {
+      sprintf(output, format, -i, "W");
+    } else if(i > 0) {
+      sprintf(output, format, i, "E");
+    }
+    
+    c->drawText(output, x, y + 4, Canvas::TOP, Canvas::CENTER);
+  }
+*/
+  // Lat points
+  // Set the legend's decimal places
+  sprintf(format, "%%0.%if%%s", dec_places_needed(y_text_spacing, 0));
+
+  factor = (plot_height - 1) / yrange.range();
+
+  for(double i = floor(max_y / y_text_spacing) * y_text_spacing; i >= min_y; i -= y_text_spacing) {
+    const int x = yaxis_offset_x;
+    const int y = plot_offset_y + (int)round((max_y - i) * factor);
+
+    c->drawLine(yaxis_width - 4, y, yaxis_width - 1, y);
+
+    // Format the lon string nicely
+    char output[128];
+    if(!latlon_plot || i == 0) {
+      sprintf(output, format, i, "");
+    } else if(i < 0) {
+      sprintf(output, format, -i, "S");
+    } else if(i > 0) {
+      sprintf(output, format, i, "N");
+    }
+
+    c->drawText(output, x + yaxis_width - 4, y, Canvas::MIDDLE, Canvas::RIGHT);
+  }
+}
+
+// Clear entire canvas.  Only use this if necessary, as it's inefficient, but it's the elegant thing to do for some plot types.
+void Displayer::clearCanvas() {
+  c->colour = 0x00FFFFFF;
+  c->setAlpha(0);
+  c->fillRect(0, 0, img_width, img_height);
+  c->setAlpha(1);
 }
 
 // Clear plot
@@ -275,23 +465,198 @@ void Displayer::clearPlot() {
 }
 
 // Draw scatter plot
-void Displayer::drawScatter(std::list<ScatterVars*>& vars, const Range& xrange, const Range& yrange) {
+void Displayer::drawScatter(std::list<ScatterVars*>& vars, const Range& xrange, const Range& yrange, bool stick) {
   list<ScatterVars*>::iterator i = vars.begin();
   double xfactor = (double)(plot_width) / xrange.range();
   double yfactor = (double)(plot_height) / yrange.range();
 
-  for(; i != vars.end(); i++) {
-    int x = (int)round(((*i)->datx - xrange.min()) * xfactor) + plot_offset_x;
-    int y = (int)round((yrange.max() - (*i)->daty) * yfactor) + plot_offset_y;
-
-    c->colour = (*i)->symbol->colour;
-    if((*i)->symbol->filled) {
-      c->fillSymbol((*i)->symbol->sym, x - 5, y - 5);
-    } else {
-      c->drawSymbol((*i)->symbol->sym, x - 5, y - 5);
+  if (!stick) { // normal
+    for(; i != vars.end(); i++) {
+      int x = (int)round(((*i)->datx - xrange.min()) * xfactor) + plot_offset_x;
+      int y = (int)round((yrange.max() - (*i)->daty) * yfactor) + plot_offset_y;
+      
+      c->colour = (*i)->symbol->colour;
+      if((*i)->symbol->filled) {
+	c->fillSymbol((*i)->symbol->sym, x - 5, y - 5);
+      } else {
+	c->drawSymbol((*i)->symbol->sym, x - 5, y - 5);
+      }
+    }
+  } else { // draw things with colours last! -- FIXME this is a terrible kludge but sorting a set also makes no sense -- should store the one point separately.
+    for(; i != vars.end(); i++) {
+      if ((*i)->symbol->colour == TGRAY /* ew, ew, ew, and more ew.  I should be checking this properly but there's no other flag. */) {
+	int x = (int)round(((*i)->datx - xrange.min()) * xfactor) + plot_offset_x;
+	int y = (int)round((yrange.max() - (*i)->daty) * yfactor) + plot_offset_y;
+	
+	c->colour = (*i)->symbol->colour; // TODO still need to do alpha blending here
+	if((*i)->symbol->filled) {
+	  c->fillSymbol((*i)->symbol->sym, x - 5, y - 5);
+	} else {
+	  c->drawSymbol((*i)->symbol->sym, x - 5, y - 5);
+	}
+      }
+    }
+    i = vars.begin();
+    for(; i != vars.end(); i++) { // now draw things with colours
+      if ((*i)->symbol->colour != TGRAY) {
+	int x = (int)round(((*i)->datx - xrange.min()) * xfactor) + plot_offset_x;
+	int y = (int)round((yrange.max() - (*i)->daty) * yfactor) + plot_offset_y;
+	
+	c->colour = (*i)->symbol->colour;
+	if((*i)->symbol->filled) {
+	  c->fillSymbol((*i)->symbol->sym, x - 5, y - 5);
+	} else {
+	  c->drawSymbol((*i)->symbol->sym, x - 5, y - 5);
+	}
+      }
     }
   }
 
+  // Clean up the rect around the map
+  if (!stick)
+    c->drawRect(plot_offset_x, plot_offset_y, plot_width, plot_height, 0x00000000);
+}
+
+static bool compareByTimesliceAndY(const ScatterVars* a, const ScatterVars* b) {
+  if (a->datx == b->datx)
+    return a->daty < b->daty;
+  return a->datx < b->datx;
+}
+
+// Draw bands plot
+void Displayer::drawBands(std::list<ScatterVars*>& vars, const Range& xrange, const Range& yrange, const DataSpec& s) {
+  list<ScatterVars*> median_line;  
+
+  // Screen coordinate max and min
+  enum { MAX=0, TOP, MID, BOT, MIN };
+  // Real coordinate max and min
+  enum { CMIN=0, CBOT, CMID, CTOP, CMAX };
+  
+  std::list< ScatterVars*> pruned;
+  std::list<ScatterVars*> chosen_model;
+  for(list<ScatterVars*>::iterator it = vars.begin(); it != vars.end(); ++it) {
+    ScatterVars* sv = *it;
+    if ( sv->symbol->sym != NONE )
+      pruned.push_back(sv);
+    if ( sv->model == s.model && sv->expt == s.expt )
+      chosen_model.push_back(sv);
+
+  }
+  fprintf(stderr, "chosen model list size: %zi\n", chosen_model.size());
+  assert(chosen_model.size() == 4);
+  chosen_model.sort(compareByTimesliceAndY);
+  assert(pruned.size() % 5 == 0);
+  pruned.sort(compareByTimesliceAndY);
+
+  double xfactor = (double)(plot_width) / xrange.range();
+  double yfactor = (double)(plot_height) / yrange.range();
+  
+  list<ScatterVars*>::iterator it = pruned.begin();
+  ScatterVars* prev_coords[5];
+  ScatterVars* coords[5];
+  int prev_y[5];
+  int y[5];
+  for (int j = MAX; j <= MIN; ++j) {
+    coords[j] = *it++;
+    y[j] = (int)round((yrange.max() - coords[j]->daty) * yfactor) + plot_offset_y;
+  }
+  median_line.push_back(coords[CMID]);
+  int x = (int)round((coords[0]->datx - xrange.min()) * xfactor) + plot_offset_x;
+  int prev_x;
+  for (int i=1; i < floor(pruned.size() / 5); ++i) {    
+    for (int j = MAX; j <= MIN; ++j) {
+      prev_coords[j] = coords[j];
+      coords[j] = *it++;
+      prev_y[j] = y[j];
+      y[j] = (int)round((yrange.max() - coords[j]->daty) * yfactor) + plot_offset_y;
+    }
+    assert(y[MAX] >= y[TOP] && y[TOP] >= y[MID] && y[MID] >= y[BOT] && y[BOT] >= y[MIN]);
+
+    prev_x = x;
+    x = (int)round((coords[0]->datx - xrange.min()) * xfactor) + plot_offset_x;
+
+    median_line.push_back(coords[CMID]);
+    gdPoint quad1[] = { {prev_x, prev_y[CMIN]}, {x, y[CMIN]}, {x, y[CBOT]}, {prev_x, prev_y[CBOT]} };
+    gdPoint quad2[] = { {prev_x, prev_y[CBOT]}, {x, y[CBOT]}, {x, y[CTOP]}, {prev_x, prev_y[CTOP]} };
+    gdPoint quad3[] = { {prev_x, prev_y[CTOP]}, {x, y[CTOP]}, {x, y[CMAX]}, {prev_x, prev_y[CMAX]} };
+    c->fillPoly(quad1, 4, LTGRAY);
+    c->fillPoly(quad2, 4, DKGRAY);
+    c->fillPoly(quad3, 4, LTGRAY);
+  }
+
+  drawScatterGrid(xrange, yrange);
+
+  // Draw median line
+  drawLines(median_line, xrange, yrange);
+
+  // Draw chosen model line
+  drawLines(chosen_model, xrange, yrange);
+
+  // Clean up the rect around the map
+  c->drawRect(plot_offset_x, plot_offset_y, plot_width, plot_height, 0x00000000);
+}
+
+// Draw box plot
+#define WIDTH 10
+#define BOXWIDTH 80
+void Displayer::drawBoxPlot(std::list<ScatterVars*>& vars, const Range& xrange, const Range& yrange) {
+  double xfactor = (double)(plot_width) / xrange.range();
+  double yfactor = (double)(plot_height) / yrange.range();
+  
+  std::list<ScatterVars*> pruned;
+  for(list<ScatterVars*>::iterator it = vars.begin(); it != vars.end(); ++it) {
+    if ( (*it)->symbol->sym != NONE )
+      pruned.push_back(*it);
+  }
+  fprintf(stderr, "pruned size: %zi\n", pruned.size());
+  assert(pruned.size() % 5 == 0);
+  pruned.sort(compareByTimesliceAndY);
+  
+  list<ScatterVars*>::iterator it = pruned.begin();
+  for (int i=0; i < floor(pruned.size() / 5); ++i) {
+    // Screen coordinate max and min
+    enum { MAX=0, TOP, MID, BOT, MIN };
+
+    // Real coordinate max and min
+    enum { CMIN=0, CBOT, CMID, CTOP, CMAX };
+    ScatterVars* coords[5];
+    int y[5];
+    
+    for (int j = MAX; j <= MIN; ++j) {
+      coords[j] = *it++;
+      y[j] = (int)round((yrange.max() - coords[j]->daty) * yfactor) + plot_offset_y;
+    }
+    assert(y[MAX] >= y[TOP] && y[TOP] >= y[MID] && y[MID] >= y[BOT] && y[BOT] >= y[MIN]);
+    
+    int x = (int)round((coords[0]->datx - xrange.min()) * xfactor) + plot_offset_x;
+
+    double iqr = coords[CTOP]->daty - coords[CBOT]->daty;
+
+    // If the max is more than 1.5IQR from the top of the box...
+    if(coords[CMAX]->daty - coords[CTOP]->daty > 1.5 * iqr) {
+      // Set the max to top + 1.5 IQR and plot a plus
+      y[MIN] = (int)round((yrange.max() - (coords[CTOP]->daty + 1.5 * iqr)) * yfactor) + plot_offset_y;
+      c->drawLine(x - 5, y[MIN] - 10, x + 5, y[MIN] - 10, 0x00000000);
+      c->drawLine(x, y[MIN] - 15, x, y[MIN] - 5, 0x00000000);
+    }
+
+    // If the max is more than 1.5IQR from the top of the box...
+    if(coords[CBOT]->daty - coords[CMIN]->daty > 1.5 * iqr) {
+      // Set the max to top + 1.5 IQR and plot a plus
+      y[MAX] = (int)round((yrange.max() - (coords[CBOT]->daty - 1.5 * iqr)) * yfactor) + plot_offset_y;
+      c->drawLine(x - 5, y[MAX] + 10, x + 5, y[MAX] + 10, 0x00000000);
+      c->drawLine(x, y[MAX] + 15, x, y[MAX] + 5, 0x00000000);
+    }
+
+    // Plot box, lines, etc
+    c->drawLine(x - WIDTH, y[MAX], x + WIDTH, y[MAX], 0x00000000);
+    c->drawLine(x, y[MAX], x, y[TOP], 0x00000000);
+    c->drawRectAbs(x - BOXWIDTH, y[TOP], x + BOXWIDTH, y[MID], 0x00000000);
+    c->drawRectAbs(x - BOXWIDTH, y[MID], x + BOXWIDTH, y[BOT], 0x00000000);
+    c->drawLine(x, y[BOT], x, y[MIN], 0x00000000);
+    c->drawLine(x-10, y[MIN], x + 10, y[MIN], 0x00000000);
+  }
+  
   // Clean up the rect around the map
   c->drawRect(plot_offset_x, plot_offset_y, plot_width, plot_height, 0x00000000);
 }
@@ -324,17 +689,25 @@ void Displayer::setTicks(const Range& xrange, const Range& yrange) {
 }
 
 // Draw a map
-void Displayer::drawMap(const gdImagePtr basemap, const Legend& leg_colours, const int* draw_mask, const int* data_mask, const double* data, const double* grid_lats, const double* grid_longs, const int rows, const int cols) {
-  int* xpoint = new int[cols + 1];
-  int* ypoint = new int[rows + 1];
-  const int datasize = rows * cols;
+void Displayer::drawMap(const gdImagePtr basemap, const Legend& leg_colours, const DataGrid<int>& draw_mask, const DataGrid<int>& data_mask, const DataGrid<double>& data, const Window& w) {
+  const int x_size = data.x_size();
+  const int y_size = data.y_size();
+  const double* x_grid_orig = data.x_grid().get();
+  const double* y_grid = data.y_grid().get();
+  const double missing = data.missing();
+  const int xpsize = x_size * 2;
+  const int ypsize = y_size * 2;
+  int* xpoint = new int[xpsize + 2];
+  int* ypoint = new int[ypsize];
+  const int datasize = data.grid_size();
 
-  const Range xrange(grid_longs, cols + 1);
-  const Range yrange(grid_lats, rows + 1);
-  const double minlong = xrange.min();
-  const double difflong = xrange.range();
-  const double maxlat = yrange.max();
-  const double difflat = yrange.range();
+  const double minlong = w.left;
+  const double difflong = w.right - w.left;
+  const double maxlat = w.top;
+  const double difflat = w.top - w.bottom;
+
+  fprintf(stderr, "left: %f, right: %f, top: %f, bottom: %f\n", w.left, w.right, w.top, w.bottom);
+  fprintf(stderr, "diff_y: %f, diff_x: %f\n", difflat, difflong);
 
   unsigned int* data_colours = new unsigned int[datasize];
   unsigned char** map = basemap->pixels;
@@ -346,68 +719,127 @@ void Displayer::drawMap(const gdImagePtr basemap, const Legend& leg_colours, con
   const int true_plot_offset_x = plot_offset_x + BORDER_WIDTH;
   const int true_plot_offset_y = plot_offset_y + BORDER_WIDTH;
 
+  // IDEA: If rows > plot width, invert xpoint stuff to have each pixel refer to a data offset instead in the X dimension
+
   // Generate the array of Y axis grid points
-  for(int y = 0; y <= rows; y++) {
-    ypoint[y] = (int)round(((maxlat - grid_lats[y]) / difflat) * true_plot_height);
+  for(int y = 0; y < ypsize; y++) {
+    ypoint[y] = (int)round((clip_to_range(0.0, difflat, (maxlat - y_grid[y])) / difflat) * true_plot_height);
   }
 
   // Generate the array of X axis grid points
-  for(int x = 0; x <= cols; x++) {
-    xpoint[x] = (int)round(((grid_longs[x] - minlong) / difflong) * true_plot_width);
+  const double* x_grid;
+  if(data.projection() == "equidistant_cylindrical") {
+    double* x_grid_new = new double[data.xgrid_size()];
+    std::copy(x_grid_orig, &x_grid_orig[data.xgrid_size()], x_grid_new);
+    shift_longs(x_grid_new, data.xgrid_size(), (w.left + w.right) / 2);
+    x_grid = x_grid_new;
+  } else {
+    x_grid = x_grid_orig;
+  }
+  for(int x = 0; x < xpsize; x++) {
+    xpoint[x] = (int)round((clip_to_range(0.0, difflong, (x_grid[x] - minlong)) / difflong) * true_plot_width);
   }
 
-  // Preprocess the data array with mask file
-  for(int i = 0; i < datasize; i++) {
-    if(draw_mask[i]) {
-      data_colours[i] = leg_colours.lookup(data[i]);
-    } else {
-      data_colours[i] = 0x00FFFFFF;
-    }
+  // Wrap around if start and end gridlongs match
+  xpoint[xpsize] = xpoint[xpsize - 1];
+  if(x_grid[0] + 360 == x_grid[xpsize - 1]) {
+    xpoint[xpsize + 1] = true_plot_width;
+  } else {
+    xpoint[xpsize + 1] = xpoint[xpsize];
   }
 
-  const int* datamask_ptr = data_mask;
-  int y = ypoint[0];
-  for(int j = 0; j < rows; j++) {
-    const int yend = ypoint[j + 1];
-    const unsigned int* data_colours_ptr = &data_colours[j * cols];
-    for(; y < yend; y++) {
-      const unsigned char* mlineptr = map[y];
-      int* lineptr = img[y + true_plot_offset_y] + true_plot_offset_x;
-      int x = xpoint[0];
-      datamask_ptr = &data_mask[j * cols];
-      for(int i = 0; i < cols; i++) {
- 	// Look up colour
- 	const unsigned int colour = data_colours_ptr[i];
- 	const int xend = xpoint[i + 1];
- 	// Map is either 1 (white) or 0 (black)
- 	// Negation of 1 is 0xffffffff; negation of 0 is 0x00000000
- 	// AND'ing that with the colour gives either black or the colour
- 	if(*datamask_ptr) {
- 	  // If the data mask is 1 at the location, then the location is not masked
- 	  for(; x < xend; x++) {
- 	    // Apply colour to map
- 	    lineptr[x] = colour & -((int)mlineptr[x]);
- 	  }
- 	} else {
- 	  // If the data mask is 0 at the location, then the location is masked
- 	  for(; x < xend; x++) {
- 	    // Apply stipple and colour to map
- 	    //lineptr[x] = colour & -((int)mlineptr[x]);
- 	    lineptr[x] = colour & -((const int)mlineptr[x] & x);
- 	  }
+  if(data.projection() == "equidistant_cylindrical") {
+    delete[] x_grid;
+  }
+
+  assert(ypoint[0] < ypoint[ypsize - 1]); // ypoints should increase
+
+  //DEBUG
+
+  fprintf(stderr, "xpoint values:");  for (int i = 0; i < xpsize + 2; i++) fprintf(stderr, " %d", xpoint[i]);  fprintf(stderr, "\n");
+
+  //DEBUG
+  if (!(xpoint[0] < xpoint[xpsize - 1]))
+    fprintf(stderr, "Error: xpoint[0] (%d) >= xpoint[xpsize - 1 (%d)] (%d)\n", xpoint[0], xpsize - 1, xpoint[xpsize-1]);
+
+
+  assert(xpoint[0] < xpoint[xpsize - 1]); // ditto
+
+  // Get the data colours
+  for(int j = 0; j < y_size; j++) {
+    if(ypoint[j * 2] != ypoint[j * 2 + 1]) {
+      unsigned int* data_colours_line = &data_colours[j * x_size];
+      const double* data_line = &data.values().get()[j * x_size];
+      const int* datamask_line = &data_mask.values().get()[j * x_size];
+      const int* drawmask_line = &draw_mask.values().get()[j * x_size];
+      for(int i = 0; i < x_size; i++) {
+	if(xpoint[i * 2] != xpoint[i * 2 + 1]) {
+	  if(drawmask_line[i] && data_line[i] != missing) {
+	    data_colours_line[i] = leg_colours.lookup(data_line[i]);
+	  } else {
+	    data_colours_line[i] = 0x00FFFFFF;
+	  }
+	  if(!datamask_line[i]) {
+	    // Half-brightness colour
+	    data_colours_line[i] = (data_colours_line[i] >> 1) & 0x7F7F7F7F;
+	  }
 	}
- 	datamask_ptr++;
       }
     }
   }
 
+  // Plot the data on the map
+  for(int j = 0; j < y_size; j++) {
+    int y = ypoint[j * 2];
+    const int yend = ypoint[j * 2 + 1];
+    const unsigned int* data_colours_ptr = &data_colours[j * x_size];
+    for(; y < yend; y++) {
+      const unsigned char* mlineptr = map[y];
+      int* lineptr = img[y + true_plot_offset_y] + true_plot_offset_x;
+      for(int i = 0; i <= x_size; i++) {
+ 	// Look up colour
+	int x = xpoint[i * 2];
+ 	const int xend = xpoint[i * 2 + 1];
+ 	const unsigned int colour = data_colours_ptr[i % x_size];
+ 	// Map is either 1 (white) or 0 (black)
+ 	// Negation of 1 is 0xffffffff; negation of 0 is 0x00000000
+ 	// AND'ing that with the colour gives either black or the colour
+	for(; x < xend; x++) {
+	  // Apply colour to map
+	  lineptr[x] = colour & -((int)mlineptr[x] ^ 1);
+	}
+      }
+    }
+  }
+
+  // Copy any remaining basemap to the map
+  if(ypoint[0] > 0) {
+    c->copy(basemap, true_plot_offset_x, true_plot_offset_y, 0, 0, true_plot_width, ypoint[0]);
+  }
+  if(xpoint[0] > 0) {
+    c->copy(basemap, true_plot_offset_x, true_plot_offset_y, 0, 0, xpoint[0], true_plot_height);
+  }
+  if(ypoint[ypsize - 1] < true_plot_height) {
+    c->copy(basemap, true_plot_offset_x, true_plot_offset_y + ypoint[ypsize - 1], 0, ypoint[ypsize - 1], true_plot_width, true_plot_height - ypoint[ypsize - 1]);
+  }
+  if(xpoint[xpsize + 1] < true_plot_width) {
+    c->copy(basemap, true_plot_offset_x + xpoint[xpsize + 1], true_plot_offset_y, xpoint[xpsize + 1], 0, true_plot_width - xpoint[xpsize + 1], true_plot_height);
+  }
+
+  // Fill in the center block if there's a gap
+  //for(int i = 1; i <= y_size; i++) {
+  // if(xpoint[i * 2 - 1] < xpoint[i * 2]) {
+  //   c->copy(basemap, true_plot_offset_x + xpoint[i * 2 - 1], true_plot_offset_y + ypoint[0], xpoint[i * 2 - 1], ypoint[0], xpoint[i * 2] - xpoint[i * 2 - 1], ypoint[ypsize - 1] - ypoint[0]);
+  //  }
+  //}
+
   // After we're done with the map, we put the grid on it
   c->colour = 0x00A0A0A0;
   if(grid) {
-    for(int j = 1; j < rows; j++) {
+    for(int j = 1; j < y_size; j++) {
       c->drawLine(true_plot_offset_x, true_plot_offset_y + ypoint[j], true_plot_offset_x + plot_width, true_plot_offset_y + ypoint[j]);
     }
-    for(int j = 0; j < cols; j++) {
+    for(int j = 0; j < x_size; j++) {
       c->drawLine(true_plot_offset_x + xpoint[j], true_plot_offset_y, true_plot_offset_x + xpoint[j], true_plot_offset_y + plot_height);
     }
   }
@@ -417,7 +849,8 @@ void Displayer::drawMap(const gdImagePtr basemap, const Legend& leg_colours, con
   delete[] ypoint;
 }
 
-void Displayer::drawPolygon(int numpoints, Point** points, Range xrange, Range yrange) {
+void Displayer::drawPolygon(const vector<Point>& points, const Range xrange, const Range yrange, bool draw_vertices) {
+  const int numpoints = points.size();
   c->colour = 0x00000000;
 
   const int true_plot_height = plot_height - 2 * BORDER_WIDTH;
@@ -427,69 +860,47 @@ void Displayer::drawPolygon(int numpoints, Point** points, Range xrange, Range y
   const int true_plot_offset_y = plot_offset_y + BORDER_WIDTH;
 
   // Lines to go on graph
-  // This code is acceptable now
+  c->setClip(true_plot_offset_x, true_plot_offset_y, true_plot_offset_x + true_plot_width, true_plot_offset_y + true_plot_height);
   c->setAntiAliased();
   c->setLineThickness(LINE_WIDTH);
   int x1, x2, y1, y2;
   for(int i = 0; i < numpoints; i++) {
     // Convert to XY from latlon
-    x1 = lontox(true_plot_width, 0, xrange.min(), xrange.max(), points[i]->x);
-    y1 = lattoy(true_plot_height, 0, yrange.min(), yrange.max(), points[i]->y);
+    x1 = lontox(true_plot_width, 0, xrange.min(), xrange.max(), points[i].x);
+    y1 = lattoy(true_plot_height, 0, yrange.min(), yrange.max(), points[i].y);
     
-    x2 = lontox(true_plot_width, 0, xrange.min(), xrange.max(), points[(i + 1) % numpoints]->x);
-    y2 = lattoy(true_plot_height, 0, yrange.min(), yrange.max(), points[(i + 1) % numpoints]->y);
+    x2 = lontox(true_plot_width, 0, xrange.min(), xrange.max(), points[(i + 1) % numpoints].x);
+    y2 = lattoy(true_plot_height, 0, yrange.min(), yrange.max(), points[(i + 1) % numpoints].y);
     
     // Lines
     c->drawLine(x1 + true_plot_offset_x, y1 + true_plot_offset_y, x2 + true_plot_offset_x, y2 + true_plot_offset_y);
   }
-  c->setLineThickness(1);
-  for(int i = 0; i < numpoints; i++) {
-    // Convert to XY from latlon
-    x1 = lontox(plot_width, 0, xrange.min(), xrange.max(), points[i]->x);
-    y1 = lattoy(plot_height, 0, yrange.min(), yrange.max(), points[i]->y);
-    
-    // Point
-    if(points[i]->selected) {
-      c->fillRectAbs(x1 - (POINT_SIZE - 2) + true_plot_offset_x, y1 - (POINT_SIZE - 2) + true_plot_offset_y, x1 + (POINT_SIZE - 2) + true_plot_offset_x, y1 + (POINT_SIZE - 2) + true_plot_offset_y, 0x00FF0000);
+  if(draw_vertices) { // May need to draw circles with thicker polygon edges; right now LINE_WIDTH is 3.
+    c->setLineThickness(1);
+    for(int i = 0; i < numpoints; i++) {
+      // Convert to XY from latlon
+      x1 = lontox(plot_width, 0, xrange.min(), xrange.max(), points[i].x);
+      y1 = lattoy(plot_height, 0, yrange.min(), yrange.max(), points[i].y);
       
-    } else {
-      c->fillRectAbs(x1 - 3 + true_plot_offset_x, y1 - 3 + true_plot_offset_y, x1 + 3 + true_plot_offset_x, y1 + 3 + true_plot_offset_y, 0x00000000);
-    }
-    
-    // Box around point
-    c->drawRect(x1 - (POINT_SIZE - 1) + true_plot_offset_x, y1 - (POINT_SIZE - 1) + true_plot_offset_y, 2 * (POINT_SIZE - 1), 2 * (POINT_SIZE - 1), 0x00FFFFFF);
-    c->drawRect(x1 - POINT_SIZE + true_plot_offset_x, y1 - POINT_SIZE + true_plot_offset_y, 2 * POINT_SIZE, 2 * POINT_SIZE);
-  }      
+      // Point
+      if(points[i].selected) {
+        c->fillRectAbs(x1 - (POINT_SIZE - 2) + true_plot_offset_x, y1 - (POINT_SIZE - 2) + true_plot_offset_y, x1 + (POINT_SIZE - 2) + true_plot_offset_x, y1 + (POINT_SIZE - 2) + true_plot_offset_y, 0x00FF0000);
+        
+      } else {
+        c->fillRectAbs(x1 - 3 + true_plot_offset_x, y1 - 3 + true_plot_offset_y, x1 + 3 + true_plot_offset_x, y1 + 3 + true_plot_offset_y, 0x00000000);
+      }
+      
+      // Box around point
+      c->drawRect(x1 - (POINT_SIZE - 1) + true_plot_offset_x, y1 - (POINT_SIZE - 1) + true_plot_offset_y, 2 * (POINT_SIZE - 1), 2 * (POINT_SIZE - 1), 0x00FFFFFF);
+      c->drawRect(x1 - POINT_SIZE + true_plot_offset_x, y1 - POINT_SIZE + true_plot_offset_y, 2 * POINT_SIZE, 2 * POINT_SIZE);
+    }      
+  }
+  c->setClip(0, 0, img_width, img_height);
 }
 
-void Displayer::plotDecal(string decalfile, Point dpoint, Range xrange, Range yrange) {
-  // Display the data point
-  // First, load the decal image (erroring if DNE)
-
-  const int true_plot_offset_x = plot_offset_x + BORDER_WIDTH;
-  const int true_plot_offset_y = plot_offset_y + BORDER_WIDTH;
-
-  FILE* infile = fopen(decalfile.c_str(), "r");
-  if(!infile) {
-    exit(3);
-  }
-  gdImagePtr decalimg = gdImageCreateFromPng(infile);
-  if(!decalimg) {
-    exit(3);
-  }
-  fclose(infile);
-  
-  // Apply the decal image to the right spot
-  c->copy(decalimg, 
-	  lontox(plot_width, 0, xrange.min(), xrange.max(), dpoint.x) - 
-	  ((decalimg->sx - 1) >> 1) + true_plot_offset_x, 
-	  lattoy(plot_height, 0, yrange.min(), yrange.max(), dpoint.y) - 
-	  ((decalimg->sy - 1) >> 1) + true_plot_offset_y, 
-	  0, 0, decalimg->sx, decalimg->sy);
-}
 
 Legend* Displayer::getLegend(const Range& datarange) {
-  Legend* leg_colours = new Legend(datarange, colour_map, colour_map_rev);
+  Range r(datarange);
   double leg_range_min = xrange_min;
   double leg_range_max = xrange_max;
 
@@ -497,10 +908,10 @@ Legend* Displayer::getLegend(const Range& datarange) {
     leg_range_min = datarange.min();
     leg_range_max = datarange.max();
   }
-  leg_colours->range.setmin(leg_range_min);
-  leg_colours->range.setmax(leg_range_max);
+  r.setmin(leg_range_min);
+  r.setmax(leg_range_max);
 
-  return leg_colours;
+  return new Legend(r, colour_map, colour_map_rev);
 }
 
 void Displayer::drawScale(Legend& leg_colours) {
@@ -542,7 +953,8 @@ void Displayer::drawScale(Legend& leg_colours) {
   double factor = (double)(width - 1) / (double)numcolours;
   for(int i = numcolours - 1; (i + 1); i--) {
     int colour = leg_colours.lookup(i);
-    c->fillRectAbs((int)round(i * factor) + leg_left, leg_top, (int)round((i + 1) * factor) + leg_left, leg_bottom, colour);
+    c->fillRectAbs((int)round(i * factor) + leg_left, leg_top, (int)round((i + 1) * factor) + leg_left, leg_top + (int)ceil(height / 2), colour);
+    c->fillRectAbs((int)round(i * factor) + leg_left, leg_top + (int)ceil(height / 2), (int)round((i + 1) * factor) + leg_left, leg_bottom, (colour >> 1) & 0x7F7F7F7F);
   }
       
   double lbl_offset;
@@ -557,7 +969,6 @@ void Displayer::drawScale(Legend& leg_colours) {
   // Create the tick marks in the legend and label them
   double scale_factor = (leg_colours.range.max() - leg_colours.range.min()) / (num_leg_segments);
   char formatbuf[128];
-  c->setClip(true_plot_offset_x, true_plot_offset_y, true_plot_offset_x + true_plot_width, true_plot_offset_y + true_plot_height);
   char output[128];
   sprintf(formatbuf, "%%.%if", leg_dec_places);
   c->colour = 0x00000000;
@@ -590,21 +1001,25 @@ void Displayer::drawIdentifyText() {
 
 void Displayer::drawCreditText() {
   int x, y;
-  c->setClip(0, 0, img_width, img_height);
 
   c->colour = 0x00000000;
   x = identify_offset_x + identify_width;
-  y = identify_offset_y + identify_height;
+  y = identify_offset_y + 5;
   c->fontsize = 10;
   c->drawText(credit_text, x, y, Canvas::BOTTOM, Canvas::RIGHT);
+
+  c->colour = 0x00FF0000;
+  x = plot_offset_x + 2;
+  y = plot_offset_y + 2;
+  c->fontsize = 14;
+  c->drawText(warning, x, y, Canvas::TOP, Canvas::LEFT);
 }
 
 bool Displayer::writePng(string filename) {
   FILE* f;
-  cout << filename << endl;
   f = fopen(filename.c_str(), "wb");
   if(!f) {
-    cerr << "Could not open output file!\n";
+    fprintf(stderr, "Could not open output file!\n");
     return false;
   }
   gdImagePng(c->img, f);

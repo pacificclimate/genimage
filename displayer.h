@@ -16,12 +16,22 @@
 #define MAP_LEG_HEIGHT 70
 
 // Scatter plots
-#define SCATTER_WIDTH 525
+#define SCATTER_WIDTH 490
 #define SCATTER_HEIGHT 525
-#define SCATTER_LEG_WIDTH 140
+#define SCATTER_LEG_WIDTH 180
+
+// Band plots
+// SCATTER_WIDTH + 2 * BORDER_WIDTH + YAXIS_WIDTH + YAXIS_TITLE_WIDTH + XAXIS_EXTRA_WIDTH;
+#define BAND_WIDTH 408
+#define BAND_HEIGHT 443
+#define BAND_LEG_WIDTH 0
+
+// Stickplots
+#define STICK_WIDTH 15
+#define STICK_HEIGHT 388
 
 // General vars
-#define XAXIS_EXTRA_WIDTH 20
+#define XAXIS_EXTRA_WIDTH 15
 #define XAXIS_HEIGHT 30
 #define XAXIS_TITLE_HEIGHT 15
 
@@ -50,6 +60,8 @@ public:
     c = 0;
     latlon_plot = true;
     smooth = 0;
+    warning = "";
+    region_vertices = 1;
   }
   ~Displayer() {
     if(c)
@@ -58,7 +70,7 @@ public:
 
   bool latlon_plot;
 
-  int grid, range_dynamic;
+  int grid, range_dynamic, region_vertices;
   int colour_map, colour_map_rev;
   int img_width, img_height;
   double x_text_spacing, y_text_spacing;
@@ -83,11 +95,19 @@ public:
   
   int smooth; // interpolate final result to a very high resolution grid
 
+  std::string warning;
+
   // Sets offsets for map plots
   void setOffsets(const gdImagePtr basemap);
 
+  // Sets offsets for stickplots
+  void setStickplotOffsets();
+
   // Sets offsets for scatter plots
   void setScatterOffsets();
+
+  // Sets offsets for scatter plots
+  void setBandsOffsets();
 
   // Fill in gaps in the map
   void fillMapGaps();
@@ -106,20 +126,36 @@ public:
   // Draw a legend on the map mapping symbols to names (for plots)
   void drawLegend(list<LegendToken* >& vars);
 
+  // Draw a legend on the boxplot explaining IQR etc
+  void drawBoxPlotLegend();
+
   // Draws the titles on the axes
   void drawAxisTitles();
   
   // Draw (and possibly label) tickmarks on the map/plot
   void drawTicks(const Range& xrange, const Range& yrange);
+  void drawYTicks(const Range& xrange, const Range& yrange);
+
+  // Fill in the area the tickmarks cover
+  void fillTickAreas();
+
+  // Clears the entire image
+  void clearCanvas();
 
   // Clears the area to be plotted
   void clearPlot();
 
   // Draw a map
-  void drawMap(const gdImagePtr basemap, const Legend& leg_colours, const int* draw_mask, const int* data_mask, const double* data, const double* grid_lats, const double* grid_longs, const int rows, const int cols);
+  void drawMap(const gdImagePtr basemap, const Legend& leg_colours, const DataGrid<int>& draw_mask, const DataGrid<int>& data_mask, const DataGrid<double>& data, const Window& w);
 
   // Draw scatter plot
-  void drawScatter(list<ScatterVars* >& vars, const Range& xrange, const Range& yrange);
+  void drawScatter(list<ScatterVars* >& vars, const Range& xrange, const Range& yrange, bool stick = false);
+
+  // Draw bands plot
+  void drawBands(list<ScatterVars* >& vars, const Range& xrange, const Range& yrange, const DataSpec& s);
+  
+  // Draw box plot
+  void drawBoxPlot(list<ScatterVars* >& vars, const Range& xrange, const Range& yrange);
 
   // Draws grid on scatter plot
   void drawScatterGrid(const Range& xrange, const Range& yrange);
@@ -134,10 +170,7 @@ public:
   void copyMap(const gdImagePtr basemap);
 
   // Draw the polygon on the map
-  void drawPolygon(int numpoints, Point** points, Range xrange, Range yrange);
-
-  // Draw the decal on the map
-  void plotDecal(std::string decalfile, Point dpoint, Range xrange, Range yrange);
+  void drawPolygon(const vector<Point>& points, const Range xrange, const Range yrange, bool draw_vertices = true);
 
   // Clear (to white) the identify text area
   void clearIdentifyArea();

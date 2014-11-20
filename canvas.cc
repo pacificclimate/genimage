@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <math.h>
+#include <assert.h>
 #include "canvas.h"
 
 Canvas::Canvas() {
@@ -9,6 +10,8 @@ Canvas::Canvas() {
   offset_x = 0;
   offset_y = 0;
   hasParent = false;
+  colour = 0x00000000;
+  fontsize = 10;
 }
 
 Canvas::Canvas(Canvas& c) {
@@ -27,6 +30,8 @@ Canvas::Canvas(std::string fontfile, int width, int height, gdImagePtr img) {
   this->width = width;
   this->height = height;
   this->fontfile = fontfile;
+  colour = 0x00000000;
+  fontsize = 10;
   offset_x = 0;
   offset_y = 0;
   hasParent = true;
@@ -120,22 +125,25 @@ void Canvas::fillRectAbs(int x1, int y1, int x2, int y2, int colour) {
   gdImageFilledRectangle(img, x1 + offset_x, y1 + offset_y, x2 + offset_x, y2 + offset_y, colour);
 }
 
-void Canvas::drawText(std::string s, int x, int y, VAlignment v, HAlignment h, double angle) {
+void Canvas::drawText(const std::string s, int x, int y, VAlignment v, HAlignment h, double angle) {
   drawText((char*)s.c_str(), x, y, v, h, colour, fontsize, angle);
 }
 
-void Canvas::drawText(std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle) {
+void Canvas::drawText(const std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle) {
   drawText((char*)s.c_str(), x, y, v, h, colour, size, angle);
 }
 
-void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h, double angle) {
+void Canvas::drawText(const char* s, int x, int y, VAlignment v, HAlignment h, double angle) {
   drawText(s, x, y, v, h, colour, fontsize, angle);
 }
 
 enum BRECT_POS { LOWERLEFT_X, LOWERLEFT_Y, LOWERRIGHT_X, LOWERRIGHT_Y, UPPERRIGHT_X, UPPERRIGHT_Y, UPPERLEFT_X, UPPERLEFT_Y };
-void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle) {
+void Canvas::drawText(const char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle) {
   int brect[8];
-  gdImageStringFT(NULL, brect, colour, (char*)fontfile.c_str(), size, angle, 0, 0, s);
+  char* buf = new char[strlen(s) + 1];
+  strcpy(buf, s);
+
+  assert(!gdImageStringFT(NULL, brect, colour, (char*)fontfile.c_str(), size, angle, 0, 0, buf));
 
   switch(h) {
   case LEFT:
@@ -167,7 +175,8 @@ void Canvas::drawText(char* s, int x, int y, VAlignment v, HAlignment h, int col
   x += offset_x;
   y += offset_y;
 
-  gdImageStringFT(img, brect, colour, (char*)fontfile.c_str(), size, angle, x, y, s);
+  assert(!gdImageStringFT(img, brect, colour, (char*)fontfile.c_str(), size, angle, x, y, buf));
+  delete[] buf;
 } 
 
 void Canvas::setClip(int x1, int y1, int x2, int y2) {
@@ -184,6 +193,14 @@ void addValue(gdPoint* p, int x, int y, int numpoints) {
     p[i].x += x;
     p[i].y += y;
   }
+}
+
+void Canvas::drawPoly(gdPoint* points, int npoints, int colour) {
+  gdImagePolygon(img, points, npoints, colour);
+}
+
+void Canvas::fillPoly(gdPoint* points, int npoints, int colour) {
+  gdImageFilledPolygon(img, points, npoints, colour);
 }
 
 void Canvas::drawSymbol(enum SYMBOL s, int x, int y) {

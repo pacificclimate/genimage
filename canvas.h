@@ -2,6 +2,7 @@
 #define __GENIMAGE_CANVAS_H
 #include <gd.h>
 #include <string>
+#include <string.h>
 
 #include "legendtoken.h"
 
@@ -38,11 +39,11 @@ public:
   void fillRectAbs(int x1, int y1, int x2, int y2);
   void fillRectAbs(int x1, int y1, int x2, int y2, int colour);
 
-  void drawText(char* s, int x, int y, VAlignment v, HAlignment h, double angle = 0);
-  void drawText(char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle = 0);
+  void drawText(const char* s, int x, int y, VAlignment v, HAlignment h, double angle = 0);
+  void drawText(const char* s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle = 0);
 
-  void drawText(std::string s, int x, int y, VAlignment v, HAlignment h, double angle = 0);
-  void drawText(std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle = 0);
+  void drawText(const std::string s, int x, int y, VAlignment v, HAlignment h, double angle = 0);
+  void drawText(const std::string s, int x, int y, VAlignment v, HAlignment h, int colour, int size, double angle = 0);
 
   void setOffsets(int offset_x, int offset_y);
 
@@ -64,6 +65,9 @@ public:
 
   void drawSymbol(enum SYMBOL s, int x, int y);
   void fillSymbol(enum SYMBOL s, int x, int y);
+
+  void drawPoly(gdPoint* points, int npoints, int colour);
+  void fillPoly(gdPoint* points, int npoints, int colour);
   
   /* Image to draw on */
   gdImagePtr img;

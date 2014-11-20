@@ -8,9 +8,13 @@ using namespace std;
 
 class Line;
 
-Point* ls_intersect(const Line& l1, const Line& l2, bool ignore_first_range = false);
+Point ls_intersect(const Line& l1, const Line& l2, bool ignore_first_range = false);
 
-Point* ls_intersect(const Point& p00, const Point& p01, const Point& p10, const Point& p11, bool ignore_first_range = false);
+Point ls_intersect(const Point& p00, const Point& p01, const Point& p10, const Point& p11, bool ignore_first_range = false);
+
+Point line_intersect(const Line& l1, const Line& l2);
+
+Point line_intersect(const Point& p00, const Point& p01, const Point& p10, const Point& p11);
 
 // Returns list of points composing bounding box in clockwise order
 Line* get_box_outline(Point topright, Point bottomleft);

@@ -6,14 +6,62 @@ ostream& operator<<(ostream& os, const Line& l) {
   return os;
 }
 
-Point* ls_intersect(const Line& l1, const Line& l2, bool ignore_first_range) {
+Point ls_intersect(const Line& l1, const Line& l2, bool ignore_first_range) {
   return ls_intersect(l1.from, l1.to, l2.from, l2.to, ignore_first_range);
 }
 
-Point* ls_intersect(const Point& p00, const Point& p01, const Point& p10, const Point& p11, bool ignore_first_range) {
+Point line_intersect(const Line& l1, const Line& l2) {
+  return line_intersect(l1.from, l1.to, l2.from, l2.to);
+}
+
+Point line_intersect(const Point& p00, const Point& p01, const Point& p10, const Point& p11) {
+  float mA, mB, x, y;
+  int vlA = 0, vlB = 0;
+
+  // Check for vertical lines
+
+  if((p00.x - p01.x) == 0) {
+    // A is vertical line
+    vlA = 1;
+    mA = INFINITY;
+  } else {
+    mA = (p00.y - p01.y) / (p00.x - p01.x);
+  }
+
+  if((p10.x - p11.x) == 0) {
+    // B is vertical line
+    vlB = 1;
+    mB = INFINITY;
+  } else {
+    mB = (p10.y - p11.y) / (p10.x - p11.x);
+  }
+
+  // If parallel or antiparallel...
+  if(mA == mB) {
+    return Point(NAN, NAN);
+  }
+
+  if(vlA) {
+    // Line A (p00 - p01) is a vertical line
+    x = p00.x;
+    y = ((p00.x - p11.x) * mB + p11.y);
+  } else if(vlB) {
+    // Line B (p10 - p11) is a vertical line
+    x = p10.x;
+    y = ((p10.x - p01.x) * mA + p01.y);
+  } else {
+    // Neither line is a vertical line
+    x = ( - mB * p10.x + p10.y + mA * p00.x - p00.y ) / ( mA - mB );
+    y = (mA * ( x - p00.x ) + p00.y);
+  }
+
+  return Point(x, y);
+}
+
+Point ls_intersect(const Point& p00, const Point& p01, const Point& p10, const Point& p11, bool ignore_first_range) {
   float mA, mB, x, y, s, t;
   int vlA = 0, vlB = 0;
-  Point* point = 0;
+  Point point(NAN, NAN);
 
   // Check for vertical lines
 
@@ -38,7 +86,7 @@ Point* ls_intersect(const Point& p00, const Point& p01, const Point& p10, const 
 
   // If parallel or antiparallel...
   if(mA == mB) {
-    return 0;
+    return point;
   }
 
   if(vlA) {
@@ -65,7 +113,7 @@ Point* ls_intersect(const Point& p00, const Point& p01, const Point& p10, const 
 
   // Check range
   if((ignore_first_range || (s >= 0 && s <= 1)) && t >= 0 && t <= 1) {
-    point = new Point(x, y);
+    point = Point(x, y);
   }
 
   // Return whatever we got, or 0 (NULL) if no intersect

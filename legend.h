@@ -1,15 +1,18 @@
 #include "legends.h"
 #include "range.h"
+#include <assert.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #ifndef __GENIMAGE_LEGEND_H
 #define __GENIMAGE_LEGEND_H
 
+#include <iostream>
+#include <algorithm>
+
 class Legend {
  public:
-  Legend(Range r, int legend_no = CONTINUOUS, int reversed = NORMAL) {
-    range = r;
+ Legend(const Range& r, int legend_no = CONTINUOUS, int reversed = NORMAL): range(r), r_min(r.min()), r_range(r.range()) {
     switch(legend_no) {
     case CONTINUOUS:
       colours = continuous[reversed];
@@ -36,22 +39,19 @@ class Legend {
     return colours[idx]; 
   }
   inline int lookup(double in) const {
-    int colour;
-    if(in < range.min()) {
-      colour = 0;
-    } else if(in > range.max()) {
-      colour = num_colours - 1;
-    } else {
-      colour = (int)roundf(((in - range.min()) / range.range()) * (num_colours - 1));
-    }
+    int snap = (int)(((in - r_min) / r_range) * (num_colours - 1) + 0.5);
+    int colour = MAX(0, MIN(num_colours-1, snap));
+    assert(colour >= 0 && colour < num_colours);
     return colours[colour];
   }
 
-  Range range;
+  const Range range;
 
  private:
   const int* colours;
   int num_colours;
+  const double r_min;
+  const double r_range;
 };
 
 #endif

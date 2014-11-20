@@ -1,7 +1,8 @@
 #ifndef __POINT_H
 #define __POINT_H
 #include <iostream>
-#include <math.h>
+#include <cmath>
+//#include <math.h>
 
 #ifndef INFINITY
 #define INFINITY infinityf()
@@ -17,8 +18,9 @@ class Point {
   Point(const Point& in) { x = in.x; y = in.y; selected = in.selected; }
 
   // Miscellaneous
-  double dist_from(const Point& p) { return hypot(x - p.x, y - p.y); }
+  double dist_from(const Point& p) { return std::hypot(x - p.x, y - p.y); }
   double cross(const Point& p) { double temp; temp = (x * p.y) - (p.x * y); return temp; }
+  bool valid() { return(!std::isnan(x) & !std::isnan(y)); }
 
   // Operators
   Point operator - (const Point& p) const { Point temp; temp.x = x - p.x; temp.y = y - p.y; return temp; }

@@ -12,17 +12,22 @@ public:
     this->filename = filename;
     data = 0;
     timeofyear = 0;
+    slmask = 0;
   }
 
   Datafile() {
     filename = 0;
     data = 0;
     timeofyear = 0;
+    slmask = 0;
   }
 
   ~Datafile() {
     if(data) {
       delete[] data;
+    }
+    if(slmask) {
+      delete[] slmask;
     }
   }
 
@@ -66,6 +71,9 @@ public:
     if(!data) {
       data = new double[rows * cols * TIMESOFYEAR];
     }
+    if(!slmask) {
+      slmask = new int[rows * cols * TIMESOFYEAR];
+    }
     return true;
   }
 
@@ -77,7 +85,7 @@ public:
     char * dataline;
 
     dataline = new char[line_length];
-    load_grid(infile, rows, cols, dataline, line_length, data, SLMASK_LENGTH);
+    load_grid(infile, rows, cols, dataline, line_length, slmask, SLMASK_LENGTH);
     delete[] dataline;
     return true;
   }
@@ -104,16 +112,11 @@ public:
     char * dataline;
     int i, timeofyear;
     double* dataptr = data;
+    char buf[1024];
 
     dataline = new char[line_length];
-    for(timeofyear = 0; timeofyear < TIMESOFYEAR; timeofyear++) {
-      // Seek to the data block we want in the data file
-      // Calculate offset to beginning of data
-      i = (line_length - 1) * rows * timeofyear + (timeofyear + 1)  * headerlen;
-      // Seek to offset (not relative)
-      if(fseek(infile, i, SEEK_SET) == -1) {
-	return false;
-      }
+    fseek(infile, 0, SEEK_SET);
+    while(fgets(buf, 1024, infile)) {
       load_grid(infile, rows, cols, dataline, line_length, dataptr, VALUE_LENGTH);
       dataptr += (rows * cols);
     }
@@ -122,6 +125,7 @@ public:
   }
 
   double* data;
+  int* slmask;
   char* filename;
   int cols, rows;
   int timeofyear;
@@ -164,9 +168,9 @@ int main(int argc, char** argv) {
       if(!d.openFile(false)) {
 	printf("Missing file %s\n", d.filename);
       } else {
-	NcVar* var1 = f->add_var(c, ncDouble, rows, cols);
+	NcVar* var1 = f->add_var(c, ncInt, rows, cols);
 	d.loadSlmask();
-	var1->put(d.data, d.rows, d.cols);
+	var1->put(d.slmask, d.rows, d.cols);
 	d.closeFile();
       }
     } else if(strstr(d.filename, "lats")) {
