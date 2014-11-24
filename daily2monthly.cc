@@ -73,9 +73,17 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
     NcVar* v = in.get_var(i);
     assert(v);
     string name = v->name();
-    if(name == "time" || name == "time_bnds" || name == f.var)
+    NcAtt* axis_att = v->get_att("axis");
+    
+
+    if((!axis_att && (name.find("_bnds") == string::npos) && name != "lat" && name != "lon") || name == "time" || name == "time_bnds" || name == f.var) {
+      if(!axis_att)
+	delete axis_att;
       continue;
+    }
     copy_var(v, out);
+    if(!axis_att)
+      delete axis_att;
   }
 
   // Special handling of time
@@ -131,7 +139,7 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
     if(d.month != oldmonth) {
       months.push_back(d.month);
       if(count > 0) {
-	divide_grid_by_scalar(recsize, accum, count, missing);
+	divide_grid_by_scalar(recsize, accum, (float)count, missing);
 	assert(outvar->set_cur(j));
 	assert(outvar->put(accum, edges));
 	j++;
@@ -168,20 +176,23 @@ void emit_and_cleanup(list<FileRecord>& l, string outpath) {
 int main(int argc, char** argv) {
   char buf[1024];
   list<FileRecord> l;
+  bool cmip5_paths = false;
 
-  // Try not to fall on your face, netcdf, when a dimension or variable is missing
-  ncopts = NC_VERBOSE;
+  NcError n(NcError::silent_nonfatal);
 
   if(argc < 2) {
-    printf("Usage: daily2monthly <output_path>");
+    printf("Usage: daily2monthly <output_path> [<cmip5_paths>]\n");
   }
+
+  if(argc == 3)
+    cmip5_paths = true;
 
   string output_path = argv[1];
 
   while(fgets(buf, 1024, stdin)) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
-    FileRecord fr(buf);
+    FileRecord fr(buf, true, false, cmip5_paths);
 
     if(!fr.is_ok) {
       printf("Failed to open file %s\n", buf);

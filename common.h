@@ -26,11 +26,13 @@ using namespace boost;
 #define DAYS_1EQYR 360
 #define DAYS_1YR 365
 
+#define DAYS_1970 719528
 #define MAX_TOY 17
 
 enum TIMESOFYEAR{JAN,FEB,MAR,APR,MAY,JUN,JUL,AUG,SEP,OCT,NOV,DEC,DJF,MAM,JJA,SON,ANN};
 
 enum PATHBITS{DOT,EXPT,VAR,MODEL,RUN,FILENAME};
+enum PATHBITS_CMIP5{C5DOT,C5CENTER,C5MODEL,C5EXPT,C5FREQ,C5TYPE,C5JUNK,C5RUN,C5VER,C5VAR,C5FILENAME};
 enum FILEBITS{FMODEL,FEXPT,FVAR,FRUN,YEARSTART,YEAREND};
 const int noleap_days[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
 const int leap_days[] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
@@ -147,12 +149,10 @@ template <typename T> void divide_grid_by_scalar(int size, T* input, T scalar) {
 
 template <typename T> void divide_grid_by_scalar(int size, T* input, T scalar, float missing) {
   for(int i = 0; i < size; i++) {
-    if(input[i] < missing) {
-      if(input[i] < missing) {
-	input[i] /= scalar;
-      } else {
-	input[i] = missing;
-      }
+    if(input[i] != missing) {
+      input[i] /= scalar;
+    } else {
+      input[i] = missing;
     }
   }
 }
@@ -165,12 +165,10 @@ template <typename T> void multiply_grid_by_scalar(int size, T* input, T scalar)
 
 template <typename T> void multiply_grid_by_scalar(int size, T* input, T scalar, T missing) {
   for(int i = 0; i < size; i++) {
-    if(input[i] < missing) {
-      if(input[i] < missing) {
-	input[i] *= scalar;
-      } else {
-	input[i] = missing;
-      }
+    if(input[i] != missing) {
+      input[i] *= scalar;
+    } else {
+      input[i] = missing;
     }
   }
 }
@@ -183,12 +181,10 @@ template <typename T> void add_scalar_to_grid(int size, T* input, T scalar) {
 
 template <typename T> void add_scalar_to_grid(int size, T* input, T scalar, T missing) {
   for(int i = 0; i < size; i++) {
-    if(input[i] < missing) {
-      if(input[i] < missing) {
-	input[i] += scalar;
-      } else {
-	input[i] = missing;
-      }
+    if(input[i] != missing) {
+      input[i] += scalar;
+    } else {
+      input[i] = missing;
     }
   }
 }
@@ -247,28 +243,30 @@ template <typename T> NcVar* copy_var_t(NcVar* src, NcFile& dst, T* temporary = 
 }
 
 template <typename T> vector<int> get_time_values(NcVar* time_var, int start_day) {
-  // Get dims, verify.
-  vector<NcDim*> dims;
-  populate_dimvec(time_var, dims);
-  assert(dims.size() == 1);
-  assert(dims[0]->is_unlimited());
+  // Get and calculate size of object
+  long* edges = time_var->edges();
+  int dim_prod = 1;
 
-  vector<T> vals(dims[0]->size());
-  vector<int> retvals(dims[0]->size());
-  assert(time_var->get(&vals[0], dims[0]->size()));
+  for(int i = 0; i < time_var->num_dims(); ++i)
+    dim_prod *= edges[i];
+
+  // Allocate storage, get data.
+  vector<T> vals(dim_prod);
+  vector<int> retvals(dim_prod);
+  assert(time_var->get(&vals[0], edges));
 
   // Then run through and calculate the day offsets, putting them in the vector.
-  for(int i = 0; i < dims[0]->size(); ++i) {
+  for(int i = 0; i < dim_prod; ++i)
     retvals[i] = (int)vals[i] + start_day;
-  }
 
+  delete[] edges;
   return retvals;
 }
 
 class FileRecord {
 public:
 
-  FileRecord(string filename, bool do_time_calcs = true, bool do_filename_date_parsing = false): filename(filename), f(new NcFile(filename.c_str(), NcFile::ReadOnly)) {
+ FileRecord(string filename, bool do_time_calcs = true, bool do_filename_date_parsing = false, bool cmip5_paths = false): filename(filename), f(new NcFile(filename.c_str(), NcFile::ReadOnly)) {
     is_ok = f->is_valid();
 
     hourly = false;
@@ -278,13 +276,21 @@ public:
       tokenizer<char_separator<char> > tok(filename, sep);
       vector<string> tokens(tok.begin(), tok.end());
 
-      var = tokens[VAR];
-      expt = tokens[EXPT];
-      model = tokens[MODEL];
-      run = tokens[RUN];
+      if(cmip5_paths) {
+	var = tokens[C5VAR];
+	expt = tokens[C5EXPT];
+	model = tokens[C5MODEL];
+	run = tokens[C5RUN];
+	file = tokens[C5FILENAME];
+      } else {
+	var = tokens[VAR];
+	expt = tokens[EXPT];
+	model = tokens[MODEL];
+	run = tokens[RUN];
+	file = tokens[FILENAME];
+      }
       
       // Check if this is corrected data
-      file = tokens[FILENAME];
       corrected = (file.find("corrected") != string::npos);
       
       set_time_params(do_time_calcs, do_filename_date_parsing);
@@ -323,7 +329,7 @@ public:
 	    char* ctype = cal->as_string(0);
 	    char* calendar_start = units->as_string(0);
 	    calendar_type = ctype;
-	    if(calendar_type == "standard")
+	    if(calendar_type == "standard" || calendar_type == "proleptic_gregorian")
 	      calendar_type = "gregorian";
 	    else if(calendar_type == "noleap")
 	      calendar_type = "365_day";
@@ -398,10 +404,17 @@ public:
   DataRecord(FileRecord& f, int offset, int month): f(f) {
     this->offset = offset;
     this->month = month;
+    this->v = NULL;
+  }
+ DataRecord(FileRecord& f, NcVar* v, int offset, int month): f(f) {
+    this->v = v;
+    this->offset = offset;
+    this->month = month;
   }
   int offset;
   int month;
   FileRecord& f;
+  NcVar* v;
 
   // Should check more but this is adequate
   bool operator==(const DataRecord& r) {

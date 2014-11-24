@@ -84,31 +84,13 @@ int find_slot_in_range(int number, int max, const int array[]) {
 }
 
 int get_gregorian_total_months(int days) {
-  int year, month;
+  time_t seconds_since_1970 = (time_t)(days - DAYS_1970) * 86400;
+  struct tm td;
+  assert(gmtime_r(&seconds_since_1970, &td));
+
+  //fprintf(stderr, "%i %i %i %i\n", td.tm_year, td.tm_mon, td.tm_mday, td.tm_hour);
   
-  int yrs_400 = days / DAYS_400YRS;
-  days = days % DAYS_400YRS;
-  int yrs_100 = days / DAYS_100YRS;
-  days = days % DAYS_100YRS;
-  int yrs_4 = days / DAYS_4YRS;
-  days = days % DAYS_4YRS;
-  int yrs = days / DAYS_1YR;
-  days = days % DAYS_1YR;
-  
-  year = yrs_400 * 400 + yrs_100 * 100 + yrs_4 * 4 + yrs;
-  
-  if(yrs == 0 && (yrs_4 != 0 || (yrs_4 == 0 && yrs_100 == 0))) { 
-    // Leap
-    month = find_slot_in_range(days, 13, leap_days);
-  } else {
-    // No Leap
-    month = find_slot_in_range(days, 13, noleap_days);
-  }
-  if(month < 0) {
-    printf("Error: days value not within range!\n");
-  }
-  
-  return 12 * year + month;
+  return 12 * (td.tm_year + 1900) + td.tm_mon;
 }
 
 int get_365day_total_months(int days) {
@@ -132,7 +114,7 @@ int get_360day_total_months(int days) {
 }
 
 int get_total_months(string calendar_type, int days) {
-  if(calendar_type == "gregorian") {
+  if(calendar_type == "gregorian" || calendar_type == "proleptic_gregorian") {
     return get_gregorian_total_months(days);
   } else if(calendar_type == "365_day") {
     return get_365day_total_months(days);
@@ -146,19 +128,18 @@ int get_total_months(string calendar_type, int days) {
 
 // Convert a Gregorian year-month-day date into days since 0000-01-01
 int date2days_greg(int start_year, int start_month, int start_day) {
-  int leap_years = (start_year / 4) - (start_year / 100) + (start_year / 400);
-  int noleap_years = start_year - leap_years;
-  int days = leap_years * DAYS_1LPYR + noleap_years * DAYS_1YR + (start_day - 1);
+  struct tm intime = {
+    0, 0, 0,
+    start_day, start_month - 1, start_year - 1900,
+    0, 0, 0,
+    0, NULL
+  };
+
+  // Ensure that UTC is what we'll get...
+  time_t time_secs_since_1970 = mktime(&intime);
+  assert(time_secs_since_1970 != -1);
   
-  if(start_year % 4 == 0 && (start_year % 100 != 0 || start_year % 400 == 0)) {
-    // Start year is a leap year
-    days += leap_days[start_month - 1];
-  } else {
-    // Start year is not a leap year
-    days += noleap_days[start_month - 1];
-  }
-  
-  return days;
+  return((int)(time_secs_since_1970 / 86400) + DAYS_1970);
 }
 
 // Convert a 365-day year-month-day date into days since 0000-01-01
@@ -173,7 +154,7 @@ int date2days_360(int start_year, int start_month, int start_day) {
 
 // Convert a year-month-day date into days since 0000-01-01, given the supplied calendar type
 int date2days(string calendar_type, int start_year, int start_month, int start_day) {
-  if(calendar_type == "gregorian") {
+  if(calendar_type == "gregorian" || calendar_type == "proleptic_gregorian") {
     return date2days_greg(start_year, start_month, start_day);
   } else if(calendar_type == "365_day") {
     return date2days_365(start_year, start_month, start_day);
@@ -270,8 +251,8 @@ void add_to_grid(int size, float* input, float* accum) {
 
 void add_to_grid(int size, float* input, float* accum, float missing) {
   for(int i = 0; i < size; i++) {
-    if(accum[i] < missing) {
-      if(input[i] < missing) {
+    if(accum[i] != missing) {
+      if(input[i] != missing) {
 	accum[i] += input[i];
       } else {
 	accum[i] = missing;
@@ -288,8 +269,8 @@ void add_to_grid(int size, float input, float* accum) {
 
 void add_to_grid(int size, float input, float* accum, float missing) {
   for(int i = 0; i < size; i++) {
-    if(accum[i] < missing) {
-      if(input < missing) {
+    if(accum[i] != missing) {
+      if(input != missing) {
 	accum[i] += input;
       } else {
 	accum[i] = missing;

@@ -107,7 +107,7 @@ void compute_climatology(NcVar* invar, const float missing, float* data, const v
     } else {
       days_in_month = noleap_dpm[month];
     }
-    
+
     // Multiply by # of days to give accumulated days of the mean in the month
     multiply_grid_by_scalar(rec_size, indata, (float)days_in_month, missing);
     
@@ -160,6 +160,7 @@ void add_cf_compliant_time_dim(NcFile& out, const FileRecord& f, NcVar* outvar, 
 
   string clim_bnds_name = "climatology_bounds";
   string bnds_name = "bnds";
+  // FIXME: This should reflect the actual cell_methods if there are any.
   outvar->add_att("cell_methods", "time: mean within days time: mean over years");
   time_var->add_att("climatology", clim_bnds_name.c_str());
   NcDim* time_dim = out.get_dim("time");
@@ -276,16 +277,20 @@ void create_climatology(FileRecord& f, string outpath, const Range<int>& r, list
 
 int main(int argc, char** argv) {
   char buf[10240];
+  bool cmip5_paths = false;
 
   // Try not to fall on your face, netcdf, when a dimension or variable is missing
   NcError n(NcError::silent_nonfatal);
 
   if(argc < 2) {
-    printf("Usage: create_climatologies <output_path>\n");
+    printf("Usage: create_climatologies <output_path> [<cmip5_paths>]\n");
     exit(1);
   }
 
   string output_path = argv[1];
+
+  if(argc == 3)
+    cmip5_paths = true;
 
   // Second step: Read the files in, one by one; extract the climatologies
   while(fgets(buf, 10240, stdin)) {
@@ -331,7 +336,7 @@ int main(int argc, char** argv) {
 	omitlist.push_back(atoi((*bits).c_str()));
       }
     }
-    FileRecord fr(filename.c_str());
+    FileRecord fr(filename.c_str(), true, false, cmip5_paths);
 
     if(!fr.is_ok) {
       printf("Failed to open file %s\n", buf);

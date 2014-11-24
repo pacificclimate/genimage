@@ -377,7 +377,7 @@ int main(int argc, char** argv) {
 
   add_var_trans_entries(var_trans, var_trans_future);
 
-  ncopts = NC_VERBOSE;
+  NcError n(NcError::silent_nonfatal);
 
   if(argc < 2) {
     printf("Usage: convert_to_scenarios <output_file>\n");
