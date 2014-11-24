@@ -1,5 +1,5 @@
 #include "common.h"
-#include "../genimage/derived_vars.h"
+#include "../core/derived_vars.h"
 #include <map>
 
 #define NUM_COLS 3

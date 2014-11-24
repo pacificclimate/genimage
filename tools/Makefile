@@ -5,8 +5,8 @@ CXXFLAGS=-O2 -g -Wall -Wextra
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg -s
 #LDFLAGS=-lstdc++ -lgd -lpng -ljpeg
 LDFLAGS=-L/usr/local/lib
-LDLIBS=-lnetcdf_c++ -lnetcdf -lstdc++
-DV_OBJS=common.o compute_derived_vars.o ../genimage/derived_vars.o
+LDLIBS=-lnetcdf_c++ -lnetcdf -lstdc++ -lm
+DV_OBJS=common.o compute_derived_vars.o ../core/derived_vars.o
 CLIM_OBJS=common.o create_climatologies.o
 D2M_OBJS=common.o daily2monthly.o
 
@@ -31,7 +31,7 @@ common.o: common.h
 	$(CXX) -MM $(CXXFLAGS) $*.cc > $*.d
 
 clean: 
-	rm -f $(OBJS) compute_derived_vars
+	rm -f $(DV_OBJS) $(CLIM_OBJS) $(D2M_OBJS) compute_derived_vars create_climatologies daily2monthly convert_to_scenarios
 
-../genimage/derived_vars.o:
-	make -C ../genimage/
+../core/derived_vars.o:
+	make -C ../core/
