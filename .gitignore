@@ -1,3 +1,10 @@
+# Compiled Binaries
+core/genimage
+tools/compute_derived_vars
+tools/convert_to_scenarios
+tools/create_climatologies
+tools/daily2monthly
+
 # Tempfiles
 *~
 \#*
