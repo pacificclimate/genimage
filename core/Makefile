@@ -19,6 +19,7 @@ genimage: $(OBJS)
 
 install: genimage
 	sudo cp genimage /usr/local/bin/
+	sudo cp genimage.cfg /usr/local/etc/
 
 clean: 
 	rm -f *.o genimage
