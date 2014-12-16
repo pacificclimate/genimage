@@ -10,13 +10,15 @@ DV_OBJS=common.o compute_derived_vars.o ../core/derived_vars.o
 CLIM_OBJS=common.o create_climatologies.o
 D2M_OBJS=common.o daily2monthly.o
 
-all: compute_derived_vars create_climatologies daily2monthly convert_to_scenarios
+all: compute_derived_vars create_climatologies daily2monthly convert_to_scenarios create_anomaly
 
 compute_derived_vars: $(DV_OBJS)
 
 create_climatologies: $(CLIM_OBJS)
 
 daily2monthly: $(D2M_OBJS)
+
+create_anomaly: common.o
 
 convert_to_scenarios: common.o
 
