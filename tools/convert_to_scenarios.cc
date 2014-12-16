@@ -339,11 +339,11 @@ void add_slmask(NcVar* invar, NcFile& out) {
 }
 
 class VarFile {
-public:
-  VarFile(string file, NcVar* var, VarTrans& vt): vt(vt) { this->file = file; this->var = var; }
-  string file;
-  NcVar* var;
-  VarTrans& vt;
+  public:
+    VarFile(string file, NcVar* var, VarTrans& vt): vt(vt) { this->file = file; this->var = var; }
+    string file;
+    NcVar* var;
+    VarTrans& vt;
 };
 
 int main(int argc, char** argv) {
@@ -446,44 +446,42 @@ int main(int argc, char** argv) {
     
     if(fr.var == "sftlf") {
       if(!seen_sftlf) {
-	seen_sftlf = true;
-	add_slmask(invar, out);
+        seen_sftlf = true;
+        add_slmask(invar, out);
       }
     } else {
       // Create new var
       list<string> expts;
       list<string>::const_iterator expt;
       if(var_trans.find(fr.var) == var_trans.end()) {
-	continue;
+        continue;
       }
 
       VarTrans& var = (fr.expt == "20c3m" || fr.expt == "hist") ? var_trans[fr.var] : var_trans_future[fr.var];
       if(fr.expt == "20c3m") {
-	expts.push_back(expt_trans["sresa1b"]);
-	expts.push_back(expt_trans["sresa2"]);
-	expts.push_back(expt_trans["sresb1"]);
+        expts.push_back(expt_trans["sresa1b"]);
+        expts.push_back(expt_trans["sresa2"]);
+        expts.push_back(expt_trans["sresb1"]);
       } else {
-	printf("Filename: %s, Expt: %s\n", filename.c_str(), fr.expt.c_str());
+        printf("Filename: %s, Expt: %s\n", filename.c_str(), fr.expt.c_str());
         assert(expt_trans.find(fr.expt) != expt_trans.end());
-	expts.push_back(expt_trans[fr.expt]);
+        expts.push_back(expt_trans[fr.expt]);
       }
 
       for(expt = expts.begin(); expt != expts.end(); ++expt) {
-	assert(date_trans.find(daterange) != date_trans.end());
-	// Create variable name
-	string varname = *expt + "-" + fr.run + "_" + date_trans[daterange] + "_" + var.name;
+        assert(date_trans.find(daterange) != date_trans.end());
+        // Create variable name
+        string varname = *expt + "-" + fr.run + "_" + date_trans[daterange] + "_" + var.name;
+        printf("Old var: %s, Var: %s\n", fr.var.c_str(), varname.c_str());
 
-	printf("Old var: %s, Var: %s\n", fr.var.c_str(), varname.c_str());
+        // Get dimensions to use
+        vector<NcDim*> dims;
+        populate_dimvec(invar, out, dims);
 
-	// Get dimensions to use
-	vector<NcDim*> dims;
-	populate_dimvec(invar, out, dims);
-      
-	// Create output variable
-	NcVar* outvar = out.add_var(varname.c_str(), ncDouble, (int)dims.size(), (const NcDim**)&dims[0]);
-	copy_atts(invar, outvar);
-
-	varfile.push_back(VarFile(filename, outvar, var));
+        // Create output variable
+        NcVar* outvar = out.add_var(varname.c_str(), ncDouble, (int)dims.size(), (const NcDim**)&dims[0]);
+        copy_atts(invar, outvar);
+        varfile.push_back(VarFile(filename, outvar, var));
       }
     }
   }
@@ -525,7 +523,7 @@ int main(int argc, char** argv) {
 
     // Output old data
     assert(outvar->put(outdat, edges));
-	
+
     delete[] indat;
     delete[] outdat;
     delete[] edges;
