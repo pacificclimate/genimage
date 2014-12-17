@@ -198,12 +198,12 @@ double u_lon_to_s(double lon) {
 }
 
 string create_daterange_string(FileRecord& fr) {
-  string filesub = fr.filename.substr(0, fr.filename.find_last_of('.'));
+  string basename = fr.filename.substr(fr.filename.find_last_of('/') + 1);
+  string filesub = basename.substr(0, basename.find_last_of('.'));
   boost::char_separator<char> sep("-");
   tokenizer<char_separator<char> > tok(filesub, sep);
   vector<string> tokens(tok.begin(), tok.end());
-  assert(tokens.size() >= 6);
-  return tokens[YEARSTART] + "_" + tokens[YEAREND];
+  return *(tokens.end()-2) + "_" + *(tokens.end()-1);
 }
 
 void copy_lats_longs(NcFile& in, NcFile& out) {
@@ -264,18 +264,18 @@ void copy_lats_longs_bnds(NcFile& in, NcFile& out) {
   const int mid_lat = lat_recsize / 2;
   const int max_lat = lat_recsize - 2;
   for(int i = 0; i < mid_lat; i += 2) {
-    printf("%f, %f\n", latdat[i], latdat[max_lat - i]);
+    // printf("%f, %f\n", latdat[i], latdat[max_lat - i]);
     swap(latdat[i], latdat[max_lat - i]);
-    printf("%f, %f\n", latdat[i], latdat[max_lat - i]);
+    // printf("%f, %f\n", latdat[i], latdat[max_lat - i]);
     swap(latdat[i + 1], latdat[max_lat - i + 1]);
   }
   
   // Move longs around so 180W is on the left edge
   const int mid_long = long_recsize / 2;
   for(int i = 0; i < mid_long; i += 2) {
-    printf("%f, %f\n", longdat[i], longdat[i + mid_long]);
+    // printf("%f, %f\n", longdat[i], longdat[i + mid_long]);
     swap(longdat[i], longdat[i + mid_long]);
-    printf("%f, %f\n", longdat[i], longdat[i + mid_long]);
+    // printf("%f, %f\n", longdat[i], longdat[i + mid_long]);
     swap(longdat[i + 1],longdat[i + mid_long + 1]);
   }
 
@@ -362,10 +362,11 @@ int main(int argc, char** argv) {
   NcDim* columns = 0;
   NcDim* timesofyear = 0;
 
-  expt_trans["sresa1b"] = "A1B";
-  expt_trans["sresa2"] = "A2";
-  expt_trans["sresb1"] = "B1";
-  expt_trans["hist"] = "HIST";
+  expt_trans["historical"] = "HIST";
+  expt_trans["rcp26"] = "RCP26";
+  expt_trans["rcp45"] = "RCP45";
+  expt_trans["rcp60"] = "RCP60";
+  expt_trans["rcp85"] = "RCP85";
 
   // Translate real dates into climatology dates
   date_trans["1961_1990"] = "1961_1990";
@@ -413,11 +414,13 @@ int main(int argc, char** argv) {
       copy_dims(in, out);
 
       // Get dimensions
-      timesofyear = out.get_dim("timeofyear");
+      timesofyear = out.get_dim("time");
       rows = out.get_dim("lat");
       columns = out.get_dim("lon");
 
-      assert(timesofyear && rows && columns);
+      assert(timesofyear);
+      assert(rows);
+      assert(columns);
 
       copy_lats_longs(in, out);
       copy_lats_longs_bnds(in, out);
@@ -457,13 +460,13 @@ int main(int argc, char** argv) {
         continue;
       }
 
-      VarTrans& var = (fr.expt == "20c3m" || fr.expt == "hist") ? var_trans[fr.var] : var_trans_future[fr.var];
+      printf("Filename: %s, Expt: %s\n", filename.c_str(), fr.expt.c_str());
+      VarTrans& var = var_trans[fr.var];
       if(fr.expt == "20c3m") {
         expts.push_back(expt_trans["sresa1b"]);
         expts.push_back(expt_trans["sresa2"]);
         expts.push_back(expt_trans["sresb1"]);
       } else {
-        printf("Filename: %s, Expt: %s\n", filename.c_str(), fr.expt.c_str());
         assert(expt_trans.find(fr.expt) != expt_trans.end());
         expts.push_back(expt_trans[fr.expt]);
       }
