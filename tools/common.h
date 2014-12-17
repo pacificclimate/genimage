@@ -277,17 +277,17 @@ public:
       vector<string> tokens(tok.begin(), tok.end());
 
       if(cmip5_paths) {
-	var = tokens[C5VAR];
-	expt = tokens[C5EXPT];
-	model = tokens[C5MODEL];
-	run = tokens[C5RUN];
-	file = tokens[C5FILENAME];
+        var = tokens[C5VAR];
+        expt = tokens[C5EXPT];
+        model = tokens[C5MODEL];
+        run = tokens[C5RUN];
+        file = tokens[C5FILENAME];
       } else {
-	var = tokens[VAR];
-	expt = tokens[EXPT];
-	model = tokens[MODEL];
-	run = tokens[RUN];
-	file = tokens[FILENAME];
+        var = tokens[VAR];
+        expt = tokens[EXPT];
+        model = tokens[MODEL];
+        run = tokens[RUN];
+        file = tokens[FILENAME];
       }
       
       // Check if this is corrected data
