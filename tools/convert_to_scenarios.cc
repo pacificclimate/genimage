@@ -198,6 +198,10 @@ double u_lon_to_s(double lon) {
 }
 
 string create_daterange_string(FileRecord& fr) {
+  if(fr.var == "sftlf") {
+    string nodate = "0000_0000";
+    return nodate;
+  }
   string basename = fr.filename.substr(fr.filename.find_last_of('/') + 1);
   string filesub = basename.substr(0, basename.find_last_of('.'));
   boost::char_separator<char> sep("-");
@@ -310,15 +314,8 @@ void add_slmask(NcVar* invar, NcFile& out) {
   assert(lat && lon);
   NcVar* slmaskvar = out.add_var("slmask", ncInt, lat, lon);
   assert(slmaskvar);
-  float min = 1E20;
-  float max = -1;
 
   // Compute sea-land mask
-  assert(invar->get(data, edges));
-  for(int i = 0; i < framesize; i++) {
-    min = (min > data[i]) ? data[i] : min;
-    max = (max < data[i]) ? data[i] : max;
-  }
   float threshold = 50;
   for(int i = 0; i < framesize; i++) {
     slmask[i] = (data[i] >= threshold);
@@ -401,7 +398,6 @@ int main(int argc, char** argv) {
     }
 
     NcFile& in = *(fr.f);
-    string daterange = create_daterange_string(fr);
     
     // From the first file...
     if(first) {
@@ -454,6 +450,7 @@ int main(int argc, char** argv) {
       }
     } else {
       // Create new var
+      string daterange = create_daterange_string(fr);
       list<string> expts;
       list<string>::const_iterator expt;
       if(var_trans.find(fr.var) == var_trans.end()) {
