@@ -202,7 +202,7 @@ int main(int argc, char** argv) {
     if(l.size()) {
       const FileRecord& oldfr = l.back();
       if(fr != oldfr) {
-	emit_and_cleanup(l, output_path);
+        emit_and_cleanup(l, output_path);
       }
     }
     l.push_back(fr);

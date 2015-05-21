@@ -289,10 +289,10 @@ public:
         run = tokens[RUN];
         file = tokens[FILENAME];
       }
-      
+
       // Check if this is corrected data
       corrected = (file.find("corrected") != string::npos);
-      
+
       set_time_params(do_time_calcs, do_filename_date_parsing);
     }
   }
@@ -304,57 +304,57 @@ public:
     NcVar* t;
     if(f->get_dim("time")) {
       timeless = false;
-      
+
       int start_year, start_month, start_day;
       if(do_filename_date_parsing) {
-	int monyear = 0;
-	const char* stuff = strrchr(strrchr(filename.c_str(), '/'), '_');
-	calendar_type = "365_day";
-	printf("Filename: %s\n", filename.c_str());
-	if(sscanf(stuff, "_%i.nc", &monyear) != 1) {
-	  printf("Failure to match date\n");
-	  return;
-	}
-	start_day = 1;
-	start_month = monyear % 100;
-	start_year = monyear / 100;
-	hourly = true;
-	this->start_day = date2days(calendar_type, start_year, start_month, start_day);
+        int monyear = 0;
+        const char* stuff = strrchr(strrchr(filename.c_str(), '/'), '_');
+        calendar_type = "365_day";
+        printf("Filename: %s\n", filename.c_str());
+        if(sscanf(stuff, "_%i.nc", &monyear) != 1) {
+          printf("Failure to match date\n");
+          return;
+        }
+        start_day = 1;
+        start_month = monyear % 100;
+        start_year = monyear / 100;
+        hourly = true;
+        this->start_day = date2days(calendar_type, start_year, start_month, start_day);
       } else {
-	if(do_time_calcs && (t = f->get_var("time"))) {
-	  NcAtt* cal = t->get_att("calendar");
-	  NcAtt* units = t->get_att("units");
+        if(do_time_calcs && (t = f->get_var("time"))) {
+          NcAtt* cal = t->get_att("calendar");
+          NcAtt* units = t->get_att("units");
 
-	  if(cal && units) {
-	    char* ctype = cal->as_string(0);
-	    char* calendar_start = units->as_string(0);
-	    calendar_type = ctype;
-	    if(calendar_type == "standard" || calendar_type == "proleptic_gregorian")
-	      calendar_type = "gregorian";
-	    else if(calendar_type == "noleap")
-	      calendar_type = "365_day";
-	    delete[] ctype;
-	    
-	    if(do_time_calcs) {
-	      // Load in the base month
-	      if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
-		if(sscanf(calendar_start, "months since %i-%i", &start_year, &start_month) == 2) {
-		  start_day = 1;
-		} else {
-		  printf("Failure to match start date\n");
-		  delete cal;
-		  delete units;
-		  return;
-		}
-	      }
-	      printf("start y-m-d: %d-%d-%d\n", start_year, start_month, start_day);
-	      this->start_day = date2days(calendar_type, start_year, start_month, start_day);
-	    }
-	    delete[] calendar_start;
-	    delete cal;
-	    delete units;
-	  }
-	}
+          if(cal && units) {
+            char* ctype = cal->as_string(0);
+            char* calendar_start = units->as_string(0);
+            calendar_type = ctype;
+            if(calendar_type == "standard" || calendar_type == "proleptic_gregorian")
+              calendar_type = "gregorian";
+            else if(calendar_type == "noleap")
+              calendar_type = "365_day";
+            delete[] ctype;
+
+            if(do_time_calcs) {
+              // Load in the base month
+              if(sscanf(calendar_start, "days since %i-%i-%i", &start_year, &start_month, &start_day) != 3) {
+                if(sscanf(calendar_start, "months since %i-%i", &start_year, &start_month) == 2) {
+                  start_day = 1;
+                } else {
+                  printf("Failure to match start date\n");
+                  delete cal;
+                  delete units;
+                  return;
+                }
+              }
+              printf("start y-m-d: %d-%d-%d\n", start_year, start_month, start_day);
+              this->start_day = date2days(calendar_type, start_year, start_month, start_day);
+            }
+            delete[] calendar_start;
+            delete cal;
+            delete units;
+          }
+        }
       }
     } else {
       timeless = true;
@@ -365,13 +365,13 @@ public:
     f.reset();
     return true;
   }
-  
+
   bool open() {
     f.reset(new NcFile(filename.c_str(), NcFile::ReadOnly));
     is_ok = f->is_valid();
     return(is_ok);
   }
-  
+
   bool operator==(const FileRecord& f) {
     return (f.var == var) && (f.expt == expt) && (f.model == model) && (f.run == run);
   }
