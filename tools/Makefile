@@ -10,7 +10,9 @@ DV_OBJS=common.o compute_derived_vars.o ../core/derived_vars.o
 CLIM_OBJS=common.o create_climatologies.o
 D2M_OBJS=common.o daily2monthly.o
 
-all: compute_derived_vars create_climatologies daily2monthly convert_to_scenarios create_anomaly
+PROGRAMS=compute_derived_vars create_climatologies daily2monthly convert_to_scenarios create_anomaly
+
+all: $(PROGRAMS)
 
 compute_derived_vars: $(DV_OBJS)
 
@@ -32,8 +34,12 @@ common.o: common.h
 	$(CXX) -c $(CXXFLAGS) $*.cc -o $*.o
 	$(CXX) -MM $(CXXFLAGS) $*.cc > $*.d
 
+.PHONY: install
+install: all
+	install $(PROGRAMS) /usr/local/bin
+
 clean: 
-	rm -f $(DV_OBJS) $(CLIM_OBJS) $(D2M_OBJS) compute_derived_vars create_climatologies daily2monthly convert_to_scenarios
+	rm -f $(DV_OBJS) $(CLIM_OBJS) $(D2M_OBJS) $(PROGRAMS)
 
 ../core/derived_vars.o:
 	make -C ../core/
