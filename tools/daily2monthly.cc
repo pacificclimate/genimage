@@ -200,8 +200,10 @@ int main(int argc, char** argv) {
     }
 
     if(l.size()) {
+      std::cout << l.size() << '\n';
       const FileRecord& oldfr = l.back();
       if(fr != oldfr) {
+        std::cout << 'emitting';
         emit_and_cleanup(l, output_path);
       }
     }

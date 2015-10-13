@@ -253,9 +253,9 @@ void add_to_grid(int size, float* input, float* accum, float missing) {
   for(int i = 0; i < size; i++) {
     if(accum[i] != missing) {
       if(input[i] != missing) {
-	accum[i] += input[i];
+        accum[i] += input[i];
       } else {
-	accum[i] = missing;
+        accum[i] = missing;
       }
     }
   }

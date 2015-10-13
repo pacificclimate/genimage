@@ -94,11 +94,11 @@ void compute_climatology(NcVar* invar, const float missing, float* data, const v
     // Get the right # of days for this month
     if(calendar_type == "gregorian") {
       if(year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) {
-	// leap year
-	days_in_month = leap_dpm[month];
+        // leap year
+        days_in_month = leap_dpm[month];
       } else {
-	// not leap year
-	days_in_month = noleap_dpm[month];
+        // not leap year
+        days_in_month = noleap_dpm[month];
       }
     } else if(calendar_type == "365_day") {
       days_in_month = noleap_dpm[month];
@@ -293,6 +293,11 @@ int main(int argc, char** argv) {
     cmip5_paths = true;
 
   // Second step: Read the files in, one by one; extract the climatologies
+  // Line format expected to be
+  // filename.nc,period_start:period_end,[period_start:period_end]
+  // ex: "future_period_example.nc,24120:24479,24480:24839,24840:25199"
+  // Data in requested periods must exist
+
   while(fgets(buf, 10240, stdin)) {
     // Chomp a la perl
     *(strchr(buf, '\n')) = '\0';
@@ -319,21 +324,21 @@ int main(int argc, char** argv) {
     
     for(++bits; bits != tok.end(); ++bits) {
       if((*bits).find(":") != string::npos) {
-	tokenizer<char_separator<char> > rtok(*bits, colonsep);
-	tokenizer<char_separator<char> >::const_iterator rbits = rtok.begin();
-	int min, max;
-	try {
-	  min = lexical_cast<int>(*rbits);
-	  ++rbits;
-	  assert(rbits != rtok.end());
-	  max = lexical_cast<int>(*rbits);
-	  Range<int> r(min, max);
-	  ranges.push_back(r);
-	} catch(bad_lexical_cast& b) {
-	  assert(false);
-	}
+        tokenizer<char_separator<char> > rtok(*bits, colonsep);
+        tokenizer<char_separator<char> >::const_iterator rbits = rtok.begin();
+        int min, max;
+        try {
+          min = lexical_cast<int>(*rbits);
+          ++rbits;
+          assert(rbits != rtok.end());
+          max = lexical_cast<int>(*rbits);
+          Range<int> r(min, max);
+          ranges.push_back(r);
+        } catch(bad_lexical_cast& b) {
+          assert(false);
+        }
       } else {
-	omitlist.push_back(atoi((*bits).c_str()));
+        omitlist.push_back(atoi((*bits).c_str()));
       }
     }
     FileRecord fr(filename.c_str(), true, false, cmip5_paths);
