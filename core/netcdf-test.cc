@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
   NcVar* longs;
   NcVar* data;
 
-  if(argc < 4) {
+  if (argc < 4) {
     printf("Usage: netcdf-test <outfile.dat> <variable> <timeofyear>\n");
     exit(1);
   }
@@ -32,12 +32,12 @@ int main(int argc, char** argv) {
 
   double* values = new double[rows->size() * cols->size()];
   data->set_cur(atoi(argv[3]));
-  if(data->get(values, 1, rows->size(), cols->size())) {
+  if (data->get(values, 1, rows->size(), cols->size())) {
     printf("Loaded values...\n");
   }
 
-  for(int i = 0; i < rows->size(); i++) {
-    for(int j = 0; j < cols->size(); j++) {
+  for (int i = 0; i < rows->size(); i++) {
+    for (int j = 0; j < cols->size(); j++) {
       printf(" % 0.5E", values[(i * cols->size()) + j]);
     }
     printf("\n");

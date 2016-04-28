@@ -64,7 +64,7 @@ public:
     region_vertices = 1;
   }
   ~Displayer() {
-    if(c)
+    if (c)
       delete c;
   }
 
@@ -92,7 +92,7 @@ public:
   int identify_offset_x, identify_offset_y;
   int xaxis_offset_x, xaxis_offset_y;
   int yaxis_offset_x, yaxis_offset_y;
-  
+
   int smooth; // interpolate final result to a very high resolution grid
 
   std::string warning;
@@ -131,7 +131,7 @@ public:
 
   // Draws the titles on the axes
   void drawAxisTitles();
-  
+
   // Draw (and possibly label) tickmarks on the map/plot
   void drawTicks(const Range& xrange, const Range& yrange);
   void drawYTicks(const Range& xrange, const Range& yrange);
@@ -153,7 +153,7 @@ public:
 
   // Draw bands plot
   void drawBands(list<ScatterVars* >& vars, const Range& xrange, const Range& yrange, const DataSpec& s);
-  
+
   // Draw box plot
   void drawBoxPlot(list<ScatterVars* >& vars, const Range& xrange, const Range& yrange);
 
@@ -162,7 +162,7 @@ public:
 
   // Draw lines for scatter plot
   void drawLines(std::list<ScatterVars*>& vars, const Range& xrange, const Range& yrange);
-  
+
   // Set intervals for tickmarks
   void setTicks(const Range& xrange, const Range& yrange);
 
@@ -174,7 +174,7 @@ public:
 
   // Clear (to white) the identify text area
   void clearIdentifyArea();
-    
+
   // Draw identity text on map
   void drawIdentifyText();
 

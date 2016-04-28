@@ -11,11 +11,11 @@ bool InterpRect::isvalid() const {
     return false;
   if (dst_boxlong <= 0 || dst_boxlat <= 0)
     return false;
-  if (src_maxlong-src_minlong < dst_boxlong)
+  if (src_maxlong - src_minlong < dst_boxlong)
     return false;
-  if (src_maxlat-src_minlat < dst_boxlat)
+  if (src_maxlat - src_minlat < dst_boxlat)
     return false;
-  
+
   return true;
 }
 

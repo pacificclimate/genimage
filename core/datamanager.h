@@ -24,12 +24,12 @@ T clip_to_range(T minval, T maxval, T val) {
 double* get_centers_from_grid(const double* grid, int size);
 
 class Window {
- public:
-  Window() { top = bottom = left = right = 0; } 
- Window(double top, double left, double bottom, double right): top(top), left(left), bottom(bottom), right(right) {}
+public:
+  Window() { top = bottom = left = right = 0; }
+  Window(double top, double left, double bottom, double right): top(top), left(left), bottom(bottom), right(right) {}
   Window* intersect(Window w) {
-    return new Window(clip_to_range(w.bottom, w.top, top), clip_to_range(w.left, w.right, left), 
-		      clip_to_range(w.bottom, w.top, bottom), clip_to_range(w.left, w.right, right));
+    return new Window(clip_to_range(w.bottom, w.top, top), clip_to_range(w.left, w.right, left),
+                      clip_to_range(w.bottom, w.top, bottom), clip_to_range(w.left, w.right, right));
   }
   double top;
   double left;
@@ -38,17 +38,17 @@ class Window {
 };
 
 class Tile {
- public:
- Tile(Window w, gdImagePtr tile): w(w), tile(tile) {}
+public:
+  Tile(Window w, gdImagePtr tile): w(w), tile(tile) {}
   Window w;
   gdImagePtr tile;
 };
 
 class DataSpec {
- public:
+public:
   DataSpec() { model = expt = timeslice = variable = ""; timeofyear = percent_change = 0; anom = DEFAULT; }
- DataSpec(ScatterVars& s, int timeofyear, bool loadXVar, ANOM_TYPE anom=DEFAULT, int percent_change=0): model(s.model), expt(s.expt), timeslice(s.timeslice), variable(loadXVar ? s.xvariable : s.yvariable), timeofyear(timeofyear), anom(anom), percent_change(percent_change) { }
- DataSpec(const string model, const string expt, const string timeslice, const string variable, const int timeofyear, ANOM_TYPE anom=DEFAULT, int percent_change=0): model(model), expt(expt), timeslice(timeslice), variable(variable), timeofyear(timeofyear), anom(anom), percent_change(percent_change) { }
+  DataSpec(ScatterVars& s, int timeofyear, bool loadXVar, ANOM_TYPE anom = DEFAULT, int percent_change = 0): model(s.model), expt(s.expt), timeslice(s.timeslice), variable(loadXVar ? s.xvariable : s.yvariable), timeofyear(timeofyear), anom(anom), percent_change(percent_change) { }
+  DataSpec(const string model, const string expt, const string timeslice, const string variable, const int timeofyear, ANOM_TYPE anom = DEFAULT, int percent_change = 0): model(model), expt(expt), timeslice(timeslice), variable(variable), timeofyear(timeofyear), anom(anom), percent_change(percent_change) { }
   string model, expt, timeslice, variable;
   int timeofyear;
   ANOM_TYPE anom;
@@ -59,33 +59,33 @@ class DataSpec {
 //virtual bool get_difference_data(DataObject<double&> diffdata, DataManager& dm2);
 
 
-template <typename T> 
+template <typename T>
 class DataGrid {
- public:
+public:
   DataGrid() { assert(false); }
   DataGrid(const DataSpec& r): r(r) { _x_size = _y_size = -1; _missing = 0; _projection = _proj4_string = ""; }
   void set_data(int x_size, int y_size, T missing, T* values, double* x_grid, double* y_grid, string proj4_string, string projection, bool anomaly, string base_period) { _values.reset(values); _x_grid.reset(x_grid); _y_grid.reset(y_grid); _x_size = x_size; _y_size = y_size; _missing = missing; _proj4_string = proj4_string; _projection = projection; _anomaly = anomaly; _base_period = base_period; }
   void set_data(int x_size, int y_size, T missing, boost::shared_ptr<T> values, boost::shared_ptr<double> x_grid, boost::shared_ptr<double> y_grid, string proj4_string, string projection, bool anomaly, string base_period) { _values = values; _x_grid = x_grid; _y_grid = y_grid; _x_size = x_size; _y_size = y_size; _missing = missing; _proj4_string = proj4_string; _projection = projection; _anomaly = anomaly; _base_period = base_period; }
 
-  boost::shared_ptr<T> values() const { return(_values); }
-  boost::shared_ptr<double> x_grid() const { return(_x_grid); }
-  boost::shared_ptr<double> y_grid() const { return(_y_grid); }
-  int grid_size() const { return(_x_size * _y_size); }
-  int xgrid_size() const { return(_x_size * 2); }
-  int ygrid_size() const { return(_y_size * 2); }
-  int x_size() const { return(_x_size); }
-  int y_size() const { return(_y_size); }
-  string projection() const { return(_projection); }
-  string proj4_string() const { return(_proj4_string); }
-  string base_period() const { return(_base_period); }
-  bool anomaly() const { return(_anomaly); }
-  T missing() const { return(_missing); }
-  bool has_data() const { return(_values != 0); }
+  boost::shared_ptr<T> values() const { return (_values); }
+  boost::shared_ptr<double> x_grid() const { return (_x_grid); }
+  boost::shared_ptr<double> y_grid() const { return (_y_grid); }
+  int grid_size() const { return (_x_size * _y_size); }
+  int xgrid_size() const { return (_x_size * 2); }
+  int ygrid_size() const { return (_y_size * 2); }
+  int x_size() const { return (_x_size); }
+  int y_size() const { return (_y_size); }
+  string projection() const { return (_projection); }
+  string proj4_string() const { return (_proj4_string); }
+  string base_period() const { return (_base_period); }
+  bool anomaly() const { return (_anomaly); }
+  T missing() const { return (_missing); }
+  bool has_data() const { return (_values != 0); }
 
   // HATE: This should be const, but C++ is a mofo
   DataSpec r;
 
- private:
+private:
   boost::shared_ptr<T> _values;
   boost::shared_ptr<double> _x_grid;
   boost::shared_ptr<double> _y_grid;
@@ -97,33 +97,33 @@ class DataGrid {
   string _base_period;
 };
 
-enum SLOT{DATA_SLOT=0,BASELINE_SLOT,SLMASK_SLOT,LATS_SLOT,LONGS_SLOT,LAT_BNDS_SLOT,LON_BNDS_SLOT,XC_SLOT,YC_SLOT,PROJ_MAPPING_SLOT,MAX_SLOTS};
+enum SLOT {DATA_SLOT = 0, BASELINE_SLOT, SLMASK_SLOT, LATS_SLOT, LONGS_SLOT, LAT_BNDS_SLOT, LON_BNDS_SLOT, XC_SLOT, YC_SLOT, PROJ_MAPPING_SLOT, MAX_SLOTS};
 
 class VarsAndFiles {
- public:
+public:
   VarsAndFiles() { }
- VarsAndFiles(NcFile *f): f(f) {}
+  VarsAndFiles(NcFile *f): f(f) {}
   shared_ptr<NcFile> f;
   map<string, NcVar*> var_cache;
 };
 
 class DataProvider {
- public:
- DataProvider(Window& w, Config& c): w(w), c(c) { current_filename = ""; used_for_bilinear = false; }
- DataProvider(Config& c): c(c) { current_filename = ""; used_for_bilinear = false; }
+public:
+  DataProvider(Window& w, Config& c): w(w), c(c) { current_filename = ""; used_for_bilinear = false; }
+  DataProvider(Config& c): c(c) { current_filename = ""; used_for_bilinear = false; }
   ~DataProvider() {
   }
 
   void set_bilin_flag() { used_for_bilinear = true; }
   void set_window(Window w) { this->w = w; }
-  int x_size(const DataSpec& s) { open_file(s); NcDim* cols_dim = f->get_dim("columns"); assert(cols_dim); return(cols_dim->size()); }
-  int y_size(const DataSpec& s) { open_file(s); NcDim* rows_dim = f->get_dim("rows"); assert(rows_dim); return(rows_dim->size()); }
+  int x_size(const DataSpec& s) { open_file(s); NcDim* cols_dim = f->get_dim("columns"); assert(cols_dim); return (cols_dim->size()); }
+  int y_size(const DataSpec& s) { open_file(s); NcDim* rows_dim = f->get_dim("rows"); assert(rows_dim); return (rows_dim->size()); }
   int sub_x_size(const DataSpec& s) { return sub_x_size(s, l); }
   int sub_y_size(const DataSpec& s) { return sub_y_size(s, l); }
   int sub_x_size(const DataSpec& s, const list<Window>& l);
   int sub_y_size(const DataSpec& s, const list<Window>& l);
-  int xgrid_size(const DataSpec& s) { return(x_size(s) * 2); }
-  int ygrid_size(const DataSpec& s) { return(y_size(s) * 2); }
+  int xgrid_size(const DataSpec& s) { return (x_size(s) * 2); }
+  int ygrid_size(const DataSpec& s) { return (y_size(s) * 2); }
   bool get_windowed_data(const DataSpec& s, SLOT slot, double* values);
   bool get_windowed_mask_data(const DataSpec& s, SLOT slot, int* values);
 
@@ -135,20 +135,20 @@ class DataProvider {
     // Get missing value
     T missing;
     NcAtt* missing_att = v->get_att("missing_value");
-    if(missing_att) {
-      switch(missing_att->type()) {
+    if (missing_att) {
+      switch (missing_att->type()) {
       case NC_INT:
-	missing = missing_att->as_int(0);
-	break;
+        missing = missing_att->as_int(0);
+        break;
       case NC_FLOAT:
         missing = missing_att->as_float(0);
-	break;
+        break;
       case NC_DOUBLE:
         missing = missing_att->as_double(0);
-	break;
+        break;
       default:
-	assert(false);
-	break;
+        assert(false);
+        break;
       }
       delete missing_att;
     } else {
@@ -160,7 +160,7 @@ class DataProvider {
     NcVar* v = get_ncdf_var(s, slot);
     bool anomaly;
     NcAtt* units_att = v->get_att("units");
-    if(units_att) {
+    if (units_att) {
       char* units_char = units_att->as_string(0);
       string units(units_char);
       delete[] units_char;
@@ -180,7 +180,7 @@ class DataProvider {
     string projection = "equidistant_cylindrical";
 
     NcAtt* grid_mapping = v->get_att("grid_mapping");
-    if(grid_mapping) {
+    if (grid_mapping) {
       // Get grid mapping information
       char* gm_desc = grid_mapping->as_string(0);
       projection = gm_desc;
@@ -192,7 +192,7 @@ class DataProvider {
   string get_proj4_string(const DataSpec& s) {
     string projection = get_projection(s);
 
-    if(projection == "equidistant_cylindrical") {
+    if (projection == "equidistant_cylindrical") {
       return "";
     }
 
@@ -203,9 +203,9 @@ class DataProvider {
     NcAtt* p4s = mapping->get_att("proj4_string");
     assert(p4s);
     char* p4s_str = p4s->as_string(0);
-    
+
     string proj4_string = p4s_str;
-    
+
     delete[] p4s_str;
     delete p4s;
     return proj4_string;
@@ -216,20 +216,20 @@ class DataProvider {
   double* get_x_grid(const DataSpec& s, const list<Window>& l);
   double* get_y_grid(const DataSpec& s, const list<Window>& l);
 
- private:
-  string get_filename(const DataSpec& s) { string ret; ret.reserve(100); return(ret.append(c.data_dir).append(s.model).append(".dat")); }
+private:
+  string get_filename(const DataSpec& s) { string ret; ret.reserve(100); return (ret.append(c.data_dir).append(s.model).append(".dat")); }
   bool get_slice(double* values, NcVar* data, const int timeofyear, const Window& w);
-  NcVar* get_ncdf_var(const DataSpec& s, SLOT slot=DATA_SLOT);
+  NcVar* get_ncdf_var(const DataSpec& s, SLOT slot = DATA_SLOT);
   bool open_file(const DataSpec& s) {
     string filename = get_filename(s);
-    if(file_cache.find(filename) == file_cache.end()) {
+    if (file_cache.find(filename) == file_cache.end()) {
       fprintf(stderr, "Opening file %s\n", filename.c_str());
       NcFile *f2 = new NcFile(filename.c_str());
       assert(f2); assert(f2->is_valid());
       file_cache[filename] = VarsAndFiles(f2);
     }
 
-    if(filename != current_filename) {
+    if (filename != current_filename) {
       fprintf(stderr, "Changing from file '%s' to file '%s'\n", current_filename.c_str(), filename.c_str());
       current_filename = filename;
       f = file_cache[current_filename].f;
@@ -244,7 +244,7 @@ class DataProvider {
   shared_ptr<NcFile> f;
   string current_filename;
   list<Window> l;
-  bool is_same_grid(const DataSpec& s) { return(get_filename(s) == current_filename); }
+  bool is_same_grid(const DataSpec& s) { return (get_filename(s) == current_filename); }
   bool used_for_bilinear;
 
   // Returns a list of windows into the data, shifted to eliminate the need for stitching/shifting later
@@ -252,8 +252,8 @@ class DataProvider {
 };
 
 class DataManager {
- public:
- DataManager(Config& c): config(c), dp(DataProvider(c)), bp(DataProvider(c)) {
+public:
+  DataManager(Config& c): config(c), dp(DataProvider(c)), bp(DataProvider(c)) {
     w = get_display_window();
     dp.set_window(w);
     bp.set_window(w);
@@ -261,14 +261,14 @@ class DataManager {
   }
   virtual ~DataManager() {
   }
-  
+
   // Returns the window to display data in
   Window get_display_window();
 
   // Gets the polygon's vertexes in the projection of the specified data grid
   vector<Point> get_projected_points(const DataSpec& o);
 
-  // Calculates a mask, given the selected region and options, of which 
+  // Calculates a mask, given the selected region and options, of which
   // data values are inside the region
   virtual DataGrid<int> get_datamask(const DataSpec& datamask, const double threshold);
 
@@ -289,18 +289,18 @@ class DataManager {
 
 
   Config& config;
-  
- protected:
+
+protected:
   virtual gdImagePtr get_basemap_image(Window& w);
   bool use_alt_baseline() { return (config.baseline_model != "" && config.baseline_expt != ""); }
 
   template<typename T>
-    bool set_up_grid(DataGrid<T>& s, SLOT slot=DATA_SLOT, bool use_alt_baseline = false) {
+  bool set_up_grid(DataGrid<T>& s, SLOT slot = DATA_SLOT, bool use_alt_baseline = false) {
     int xsize, ysize;
     double *x_grid, *y_grid;
     string proj4_string;
     string projection;
-    if(use_alt_baseline) {
+    if (use_alt_baseline) {
       dp.set_bilin_flag();
       DataSpec s2(config.baseline_model, config.baseline_expt, s.r.timeslice, s.r.variable, s.r.timeofyear, s.r.anom, s.r.percent_change);
       xsize = bp.sub_x_size(s2);
@@ -324,7 +324,7 @@ class DataManager {
     bool anomaly = dp.is_anomaly(s.r, slot);
 
     s.set_data(xsize, ysize, missing, values, x_grid, y_grid, proj4_string, projection, anomaly, config.base_period);
-    return(true);
+    return (true);
   }
 
   Window w;

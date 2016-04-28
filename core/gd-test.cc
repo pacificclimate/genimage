@@ -11,21 +11,21 @@ public:
     offset_x = 0;
     offset_y = 0;
     hasParent = true;
-    if(!img) {
+    if (!img) {
       this->img = gdImageCreateTrueColor(width, height);
       hasParent = false;
     }
   }
 
   ~Canvas() {
-    if(!hasParent) {
+    if (!hasParent) {
       gdImageDestroy(img);
     }
   }
 
   bool writeImage(char* filename) {
     FILE* f = fopen(filename, "wb");
-    if(!f) {
+    if (!f) {
       return false;
     }
     gdImagePng(img, f);
@@ -34,7 +34,7 @@ public:
   }
 
   bool writeImage(FILE* f) {
-    if(!f) {
+    if (!f) {
       return false;
     }
     gdImagePng(img, f);
@@ -81,7 +81,7 @@ public:
     int brect[8];
     gdImageStringFT(NULL, brect, colour, (char*)fontfile.c_str(), size, 0, 0, 0, s);
 
-    switch(h) {
+    switch (h) {
     case LEFT:
       x -= brect[0];
       break;
@@ -95,7 +95,7 @@ public:
       break;
     }
 
-    switch(v) {
+    switch (v) {
     case TOP:
       y -= brect[5];
       break;
@@ -111,8 +111,8 @@ public:
     x += offset_x;
     y += offset_y;
     gdImageStringFT(img, brect, colour, (char*)fontfile.c_str(), size, 0, x, y, s);
-  } 
-  
+  }
+
   /* Image to draw on */
   gdImagePtr img;
   bool hasParent;
@@ -147,7 +147,7 @@ int main(int argc, char** argv) {
   printf("%x\n", p->pixels[0]);
   printf("%x\n", p->pixels[0][0]);
 
-  if(argc < 2) {
+  if (argc < 2) {
     printf("Usage: ./gd-test <config file>\n");
   }
 

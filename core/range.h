@@ -9,16 +9,16 @@
 
 
 #ifndef MAX
- #define MAX(a,b)   (((a) > (b)) ? (a) : (b))
+#define MAX(a,b)   (((a) > (b)) ? (a) : (b))
 #endif
 
 #ifndef MIN
- #define MIN(a,b)   (((a) < (b)) ? (a) : (b))
+#define MIN(a,b)   (((a) < (b)) ? (a) : (b))
 #endif
 
 
 class Range {
- public:
+public:
   enum RangeType { RANGE_LAT, RANGE_LON, RANGE_DATA };
 
   Range(const Range& r) { _min = r.min(); _max = r.max(); missing = r.missing; type = r.type; }
@@ -35,7 +35,7 @@ class Range {
   double range() const { return _max - _min; }
   void round(double factor);
   void add(double in);
- private:
+private:
   double _max;
   double _min;
   RangeType type;
@@ -53,12 +53,12 @@ public:
     maxlong = 0;
   }
   void addPoint(const double data, const double newlat, const double newlong) {
-    if(data > max) {
+    if (data > max) {
       max = data;
       maxlong = newlong;
       maxlat = newlat;
     }
-    if(data < min) {
+    if (data < min) {
       min = data;
       minlong = newlong;
       minlat = newlat;

@@ -5,21 +5,21 @@ enum CONN_STATES { UNDEF, USED, LINE, TEMP };
 
 vector<double> quantile(const vector<double> indata, const vector<double> quantiles) {
   vector<double> result;
-  if(quantiles.size() == 0)
+  if (quantiles.size() == 0)
     return result;
-  
+
   const int n = indata.size();
 
   // Make a copy because nth_element modifies the data.
   vector<double> data = indata;
-  
+
   // Constants for quantiles. Can be modified if needed.
-  const double a = 1.0/3.0;
-  const double b = 1.0/3.0;
+  const double a = 1.0 / 3.0;
+  const double b = 1.0 / 3.0;
   const double fuzz = 4 * std::numeric_limits<double>::epsilon();
-  
-  for(vector<double>::const_iterator quantile_iter = quantiles.begin(); quantile_iter != quantiles.end(); ++quantile_iter) {
-    if(n < 2) {
+
+  for (vector<double>::const_iterator quantile_iter = quantiles.begin(); quantile_iter != quantiles.end(); ++quantile_iter) {
+    if (n < 2) {
       result.push_back(std::numeric_limits<double>::quiet_NaN());
       continue;
     }
@@ -27,25 +27,25 @@ vector<double> quantile(const vector<double> indata, const vector<double> quanti
 
     const double nppm = a + quantile * (n + 1 - a - b) - 1;
     const size_t j = (size_t)std::max(0.0, floor(nppm + fuzz));
-    
+
     // Variance from R: Should probably be <= not < here.
     const double h = (fabs(nppm - (double)j) <= fuzz) ? 0 : nppm - (double)j;
     size_t right_elem = std::max(0ul, std::min(j + 1, data.size() - 1));
     size_t left_elem = std::max(0ul, std::min(j, data.size() - 1));
-    
-    if(h == 1) {
+
+    if (h == 1) {
       std::nth_element(data.begin(), data.begin() + right_elem, data.end());
       result.push_back((data[right_elem]));
     } else {
       // No guarantee that 2nd nth_element call will preserve order such that the pointer used by the 1st call still points to the same thing; so store the result before calling nth_element again.
       std::nth_element(data.begin(), data.begin() + left_elem, data.end());
       const double left = data[left_elem];
-      if(h == 0) {
-	result.push_back(left);
+      if (h == 0) {
+        result.push_back(left);
       } else {
-	std::nth_element(data.begin(), data.begin() + right_elem, data.end());
-	const double right = data[right_elem];
-	result.push_back((1 - h) * left + h * right);
+        std::nth_element(data.begin(), data.begin() + right_elem, data.end());
+        const double right = data[right_elem];
+        result.push_back((1 - h) * left + h * right);
       }
     }
   }
@@ -54,10 +54,10 @@ vector<double> quantile(const vector<double> indata, const vector<double> quanti
 
 // Affects the input data
 void shift_longs(double* longs, const int size, const double x_center) {
-  for(int i = 0; i < size; i++)
+  for (int i = 0; i < size; i++)
     longs[i] = fmod(longs[i] - x_center + 540, 360) + x_center - 180;
-  if(longs[0] == longs[size - 1]) {
-    if((fabs(longs[size - 1] - longs[size - 2]) + 1) < fabs(longs[0] - longs[1])) {
+  if (longs[0] == longs[size - 1]) {
+    if ((fabs(longs[size - 1] - longs[size - 2]) + 1) < fabs(longs[0] - longs[1])) {
       longs[0] -= 360;
     } else {
       longs[size - 1] += 360;
@@ -66,61 +66,61 @@ void shift_longs(double* longs, const int size, const double x_center) {
 }
 
 bool find_in_range(double num, int max, const double* vals, int& ret, bool ascending) {
-  if(ascending) {
-    for(ret = 0; ret < max; ret++)
-      if(vals[ret] <= num && vals[ret + 1] > num)
-	break;
+  if (ascending) {
+    for (ret = 0; ret < max; ret++)
+      if (vals[ret] <= num && vals[ret + 1] > num)
+        break;
   } else {
-    for(ret = 0; ret < max; ret++)
-      if(vals[ret + 1] < num && vals[ret] >= num)
-	break;
+    for (ret = 0; ret < max; ret++)
+      if (vals[ret + 1] < num && vals[ret] >= num)
+        break;
   }
   return (ret != max);
 }
 
 // Finds a lat/lon in a grid variable
 bool find_in_grid_var(double num, int max, const double* vals, int& ret, bool ascending) {
-  if(ascending) {
-    for(ret = 0; ret < max; ret++)
-      if(vals[ret * 2] <= num && num < vals[ret * 2 + 1])
-	break;
+  if (ascending) {
+    for (ret = 0; ret < max; ret++)
+      if (vals[ret * 2] <= num && num < vals[ret * 2 + 1])
+        break;
   } else {
-    for(ret = 0; ret < max; ret++)
-      if(vals[ret * 2 + 1] < num && num <= vals[ret * 2])
-	break;
+    for (ret = 0; ret < max; ret++)
+      if (vals[ret * 2 + 1] < num && num <= vals[ret * 2])
+        break;
   }
   return (ret != max);
 }
 
 double poly_area(const vector<Point>& points) {
-    double area = 0;
-    if(points.size() == 0) return(0.0);
+  double area = 0;
+  if (points.size() == 0) return (0.0);
 
-    Point s = points[points.size() - 1];
-    for (vector<Point>::const_iterator p = points.begin(); p != points.end(); ++p) {
-      const Point &e = *p;
-      area += (s.x + e.x) * (s.y - e.y);
-      s = e;
-    }
+  Point s = points[points.size() - 1];
+  for (vector<Point>::const_iterator p = points.begin(); p != points.end(); ++p) {
+    const Point &e = *p;
+    area += (s.x + e.x) * (s.y - e.y);
+    s = e;
+  }
 
-    return area*.5;
+  return area * .5;
 }
 
 void split_on_x(const double x, const vector<Point>& in, vector<Point>& left, vector<Point>& right) {
   Point s = in[in.size() - 1];
-  for(unsigned int j = 0; j < in.size(); j++) {
+  for (unsigned int j = 0; j < in.size(); j++) {
     const Point& e = in[j];
-    if(e.x > x) { // ends to right of line
+    if (e.x > x) { // ends to right of line
       const double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (x - s.x) );
-      if(s.x < x) { // started to the left of the line
-	left.push_back(Point( x, intersect ));
-	right.push_back(Point( x, intersect ));
+      if (s.x < x) { // started to the left of the line
+        left.push_back(Point( x, intersect ));
+        right.push_back(Point( x, intersect ));
       }
       right.push_back(e);
-    } else if(e.x == x) { // ends ON boundary, therefore NO intersection.
+    } else if (e.x == x) { // ends ON boundary, therefore NO intersection.
       left.push_back(e);
       right.push_back(e);
-    } else if(s.x > x) { // started to right of line, ended to left of line
+    } else if (s.x > x) { // started to right of line, ended to left of line
       const double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (x - s.x) );
       right.push_back(Point( x, intersect ));
       left.push_back(Point( x, intersect ));
@@ -134,19 +134,19 @@ void split_on_x(const double x, const vector<Point>& in, vector<Point>& left, ve
 
 void split_on_y(const double y, const vector<Point>& in, vector<Point>& top, vector<Point>& bottom) {
   Point s = in[in.size() - 1];
-  for(unsigned int j = 0; j < in.size(); j++) {
+  for (unsigned int j = 0; j < in.size(); j++) {
     const Point& e = in[j];
-    if(e.y > y) { // ends above the line
+    if (e.y > y) { // ends above the line
       const double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (y - s.y) );
-      if(s.y < y) { // started below the line
-	top.push_back(Point( intersect, y ));
-	bottom.push_back(Point( intersect, y ));
+      if (s.y < y) { // started below the line
+        top.push_back(Point( intersect, y ));
+        bottom.push_back(Point( intersect, y ));
       }
       top.push_back(e);
-    } else if(e.y == y) { // ends ON boundary, therefore NO intersection.
+    } else if (e.y == y) { // ends ON boundary, therefore NO intersection.
       top.push_back(e);
       bottom.push_back(e);
-    } else if(s.y > y) { // started above the line, ended below the line
+    } else if (s.y > y) { // started above the line, ended below the line
       const double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (y - s.y) );
       top.push_back(Point( intersect, y ));
       bottom.push_back(Point( intersect, y ));
@@ -161,31 +161,31 @@ void split_on_y(const double y, const vector<Point>& in, vector<Point>& top, vec
 void partition_recurse_y(const vector<Point>& in, const int x_off, const int y_off, const int x_size, const int y_size, const int row_length, double* grid, const double* x_grid, const double* y_grid, int lev);
 void partition_recurse_x(const vector<Point>& in, const int x_off, const int y_off, const int x_size, const int y_size, const int row_length, double* grid, const double* x_grid, const double* y_grid, int lev) {
   // Case for no coverage
-  if(in.size() == 0)
+  if (in.size() == 0)
     return;
 
   // Base case for recursion
-  if(x_size == 1 && y_size == 1) {
+  if (x_size == 1 && y_size == 1) {
     grid[(y_off * row_length) + x_off] = fabs(poly_area(in));
     return;
   }
 
   // Keep recursing on other dimension if size of dimension we are recursing on is 1
-  if(x_size == 1) {
+  if (x_size == 1) {
     partition_recurse_y(in, x_off, y_off, x_size, y_size, row_length, grid, x_grid, y_grid, lev + 1);
     return;
   }
 
-  if(in.size() == 4) {
+  if (in.size() == 4) {
     // If the diagonals of the polygon and of the grid box match, then they must be the same
     const double hyplen1 = pow(in[0].x - in[2].x, 2) + pow(in[0].y - in[2].y, 2);
     const double hyplen2 = pow(in[1].x - in[3].x, 2) + pow(in[1].y - in[3].y, 2);
     const double boxhyp = pow(x_grid[x_off * 2] - x_grid[(x_off + x_size) * 2 - 1], 2) + pow(y_grid[y_off * 2] - y_grid[(y_off + y_size) * 2 - 1], 2);
-    if(fabs(boxhyp / hyplen2) - 1 < 1e-6 && fabs(boxhyp / hyplen1) - 1 < 1e-6) {
-    //if(boxhyp == hyplen2 && boxhyp == hyplen1) {
+    if (fabs(boxhyp / hyplen2) - 1 < 1e-6 && fabs(boxhyp / hyplen1) - 1 < 1e-6) {
+      //if(boxhyp == hyplen2 && boxhyp == hyplen1) {
       // If diagonals match, they're equal; so fill it in.
-      for(int y = y_off; y < y_off + y_size; y++)
-	std::fill(&grid[(y * row_length) + x_off], &grid[(y * row_length) + x_off + x_size], fabs((y_grid[y * 2] - y_grid[y * 2 + 1]) * (x_grid[x_off * 2] - x_grid[x_off * 2 + 1])));
+      for (int y = y_off; y < y_off + y_size; y++)
+        std::fill(&grid[(y * row_length) + x_off], &grid[(y * row_length) + x_off + x_size], fabs((y_grid[y * 2] - y_grid[y * 2 + 1]) * (x_grid[x_off * 2] - x_grid[x_off * 2 + 1])));
 
       return;
     }
@@ -204,31 +204,31 @@ void partition_recurse_x(const vector<Point>& in, const int x_off, const int y_o
 
 void partition_recurse_y(const vector<Point>& in, const int x_off, const int y_off, const int x_size, const int y_size, const int row_length, double* grid, const double* x_grid, const double* y_grid, int lev) {
   // Case for no coverage
-  if(in.size() == 0)
+  if (in.size() == 0)
     return;
 
   // Base case for recursion
-  if(x_size == 1 && y_size == 1) {
+  if (x_size == 1 && y_size == 1) {
     grid[(y_off * row_length) + x_off] = fabs(poly_area(in));
     return;
   }
 
   // Keep recursing on other dimension if size of dimension we are recursing on is 1
-  if(y_size == 1) {
+  if (y_size == 1) {
     partition_recurse_x(in, x_off, y_off, x_size, y_size, row_length, grid, x_grid, y_grid, lev + 1);
     return;
   }
 
-  if(in.size() == 4) {
+  if (in.size() == 4) {
     // If the diagonals of the polygon and of the grid box match, then they must be the same
     const double hyplen1 = pow(in[0].x - in[2].x, 2) + pow(in[0].y - in[2].y, 2);
     const double hyplen2 = pow(in[1].x - in[3].x, 2) + pow(in[1].y - in[3].y, 2);
     const double boxhyp = pow(x_grid[x_off * 2] - x_grid[(x_off + x_size) * 2 - 1], 2) + pow(y_grid[y_off * 2] - y_grid[(y_off + y_size) * 2 - 1], 2);
-    if(fabs(boxhyp / hyplen2) - 1 < 1e-6 && fabs(boxhyp / hyplen1) - 1 < 1e-6) {
-    //if(boxhyp == hyplen2 && boxhyp == hyplen1) {
+    if (fabs(boxhyp / hyplen2) - 1 < 1e-6 && fabs(boxhyp / hyplen1) - 1 < 1e-6) {
+      //if(boxhyp == hyplen2 && boxhyp == hyplen1) {
       // If diagonals match, they're equal; so fill it in.
-      for(int y = y_off; y < y_off + y_size; y++)
-	std::fill(&grid[(y * row_length) + x_off], &grid[(y * row_length) + x_off + x_size], fabs((y_grid[y * 2] - y_grid[y * 2 + 1]) * (x_grid[x_off * 2] - x_grid[x_off * 2 + 1])));
+      for (int y = y_off; y < y_off + y_size; y++)
+        std::fill(&grid[(y * row_length) + x_off], &grid[(y * row_length) + x_off + x_size], fabs((y_grid[y * 2] - y_grid[y * 2 + 1]) * (x_grid[x_off * 2] - x_grid[x_off * 2 + 1])));
 
       return;
     }
@@ -256,30 +256,30 @@ vector<Point> sutherland_clip(const double top, const double left, const double 
   assert(right > left);
 
   vector<Point> a, b;
-    
+
   { // Left
     const vector<Point>& in = points;
     vector<Point>& out      = a;
 
     Point s = in[in.size() - 1];
-    for(unsigned int j = 0; j < in.size(); j++) {
+    for (unsigned int j = 0; j < in.size(); j++) {
       const Point& e = in[j];
-      if(e.x > left) { // ends fully inside
-	if(s.x < left) { // started outside, therefore intersection
-	  double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (left - s.x) );
-	  out.push_back(Point( left, intersect ));
-	}
-	out.push_back(e);
-      } else if(e.x == left) { // ends ON boundary, therefore NO intersection.
-	out.push_back(e);
-      } else if(s.x > left) { // started fully inside (and did not end inside)
-	double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (left - s.x) );
-	out.push_back(Point(   left, intersect ));
+      if (e.x > left) { // ends fully inside
+        if (s.x < left) { // started outside, therefore intersection
+          double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (left - s.x) );
+          out.push_back(Point( left, intersect ));
+        }
+        out.push_back(e);
+      } else if (e.x == left) { // ends ON boundary, therefore NO intersection.
+        out.push_back(e);
+      } else if (s.x > left) { // started fully inside (and did not end inside)
+        double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (left - s.x) );
+        out.push_back(Point(   left, intersect ));
       }
       s = e;
     }
 
-    if(out.size() == 0) return(out);
+    if (out.size() == 0) return (out);
   }
 
   { // Right
@@ -287,24 +287,24 @@ vector<Point> sutherland_clip(const double top, const double left, const double 
     vector<Point>& out      = b;
 
     Point s = in[in.size() - 1];
-    for(unsigned int j = 0; j < in.size(); j++) {
+    for (unsigned int j = 0; j < in.size(); j++) {
       const Point& e = in[j];
-      if(e.x < right) { // ends fully inside
-	if(s.x > right) { // started outside, therefore intersection
-	  double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (right - s.x) );
-	  out.push_back(Point( right, intersect));
-	}
-	out.push_back(e);
-      } else if(e.x == right) { // ends ON boundary, therefore NO intersection.
-	out.push_back(e);
-      } else if(s.x < right) {// started fully inside (and did not end inside)
-	double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (right - s.x) );
-	out.push_back(Point( right, intersect));
+      if (e.x < right) { // ends fully inside
+        if (s.x > right) { // started outside, therefore intersection
+          double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (right - s.x) );
+          out.push_back(Point( right, intersect));
+        }
+        out.push_back(e);
+      } else if (e.x == right) { // ends ON boundary, therefore NO intersection.
+        out.push_back(e);
+      } else if (s.x < right) { // started fully inside (and did not end inside)
+        double intersect = s.y + ( ((e.y - s.y) / (e.x - s.x)) * (right - s.x) );
+        out.push_back(Point( right, intersect));
       }
       s = e;
     }
 
-    if(out.size() == 0) return(out);
+    if (out.size() == 0) return (out);
   }
 
   { // Bottom
@@ -313,24 +313,24 @@ vector<Point> sutherland_clip(const double top, const double left, const double 
     out.clear();
 
     Point s = in[in.size() - 1];
-    for(unsigned int j = 0; j < in.size(); j++) {
+    for (unsigned int j = 0; j < in.size(); j++) {
       const Point& e = in[j];
-      if(e.y > bottom) { // ends fully inside
-	if(s.y < bottom) { // started outside, therefore intersection
-	  double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (bottom - s.y) );
-	  out.push_back(Point( intersect, bottom));
-	}
-	out.push_back(e);
-      } else if(e.y == bottom) { // ends ON boundary, therefore NO intersection.
-	out.push_back(e);
-      } else if(s.y > bottom) { // started fully inside (and did not end inside)
-	double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (bottom - s.y) );
-	out.push_back(Point(intersect, bottom));
+      if (e.y > bottom) { // ends fully inside
+        if (s.y < bottom) { // started outside, therefore intersection
+          double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (bottom - s.y) );
+          out.push_back(Point( intersect, bottom));
+        }
+        out.push_back(e);
+      } else if (e.y == bottom) { // ends ON boundary, therefore NO intersection.
+        out.push_back(e);
+      } else if (s.y > bottom) { // started fully inside (and did not end inside)
+        double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (bottom - s.y) );
+        out.push_back(Point(intersect, bottom));
       }
       s = e;
     }
 
-    if(out.size() == 0) return(out);
+    if (out.size() == 0) return (out);
   }
 
   { // Top
@@ -339,24 +339,24 @@ vector<Point> sutherland_clip(const double top, const double left, const double 
     out.clear();
 
     Point s = in[in.size() - 1];
-    for(int unsigned j = 0; j < in.size(); j++) {
+    for (int unsigned j = 0; j < in.size(); j++) {
       const Point& e = in[j];
-      if(e.y < top) { // ends fully inside
-	if(s.y > top) { // started outside, therefore intersection
-	  double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (top - s.y) );
-	  out.push_back(Point(intersect, top));
-	}
-	out.push_back(e);
-      } else if(e.y == top) { // ends ON boundary, therefore NO intersection.
-	out.push_back(e);
-      } else if(s.y < top) { // started fully inside (and did not end inside)
-	double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (top - s.y) );
-	out.push_back(Point(intersect, top));
+      if (e.y < top) { // ends fully inside
+        if (s.y > top) { // started outside, therefore intersection
+          double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (top - s.y) );
+          out.push_back(Point(intersect, top));
+        }
+        out.push_back(e);
+      } else if (e.y == top) { // ends ON boundary, therefore NO intersection.
+        out.push_back(e);
+      } else if (s.y < top) { // started fully inside (and did not end inside)
+        double intersect = s.x + ( ((e.x - s.x) / (e.y - s.y)) * (top - s.y) );
+        out.push_back(Point(intersect, top));
       }
       s = e;
     }
 
-    return(out);
+    return (out);
   }
 }
 
@@ -370,7 +370,7 @@ void draw_polygon(int y_size, int x_size, double* grid, const double* y_grid, co
   Range prx;
   Range pry;
 
-  for(unsigned int i = 0; i < points.size(); i++) {
+  for (unsigned int i = 0; i < points.size(); i++) {
     prx.add(points[i].x);
     pry.add(points[i].y);
   }
@@ -380,19 +380,19 @@ void draw_polygon(int y_size, int x_size, double* grid, const double* y_grid, co
   fprintf(stderr, "points x min: %f, max: %f\n", prx.min(), prx.max());
   fprintf(stderr, "points y min: %f, max: %f\n", pry.min(), pry.max());
 
-  if(!find_in_grid_var(pry.min(), y_size, y_grid, min_y, (y_grid[0] < y_grid[1])))
+  if (!find_in_grid_var(pry.min(), y_size, y_grid, min_y, (y_grid[0] < y_grid[1])))
     min_y = (y_grid[0] < y_grid[1]) ? 0 : y_size - 1;
 
-  if(!find_in_grid_var(pry.max(), y_size, y_grid, max_y, (y_grid[0] < y_grid[1])))
+  if (!find_in_grid_var(pry.max(), y_size, y_grid, max_y, (y_grid[0] < y_grid[1])))
     max_y = (y_grid[0] < y_grid[1]) ? y_size - 1 : 0;
 
-  if(!find_in_grid_var(prx.min(), x_size, x_grid, min_x, (x_grid[0] < x_grid[1])))
+  if (!find_in_grid_var(prx.min(), x_size, x_grid, min_x, (x_grid[0] < x_grid[1])))
     min_x = 0;
 
-  if(!find_in_grid_var(prx.max(), x_size, x_grid, max_x, (x_grid[0] < x_grid[1])))
+  if (!find_in_grid_var(prx.max(), x_size, x_grid, max_x, (x_grid[0] < x_grid[1])))
     max_x = x_size - 1;
 
-  if(y_grid[min_y * 2] > y_grid[max_y * 2])
+  if (y_grid[min_y * 2] > y_grid[max_y * 2])
     assert(false);
 
   // Note: min_y and max_y are the indices of the minimum and maximum VALUES of Y, not (necessarily) the minimum and maximum indices covered by the polygon.
@@ -401,7 +401,7 @@ void draw_polygon(int y_size, int x_size, double* grid, const double* y_grid, co
   const double bottom = (y_grid[min_y * 2] > y_grid[min_y * 2 + 1]) ? y_grid[min_y * 2 + 1] : y_grid[min_y * 2];
   fprintf(stderr, "xmin_lon: %f, xmax_lon: %f, ymin_lat: %f, ymax_lat: %f\n", x_grid[min_x * 2], x_grid[max_x * 2 + 1], bottom, top);
   const vector<Point> cp = sutherland_clip(top, x_grid[min_x * 2], bottom, x_grid[max_x * 2 + 1], points);
-  if(min_y < max_y) {
+  if (min_y < max_y) {
     partition_recurse_x(cp, min_x, min_y, max_x - min_x + 1, max_y - min_y + 1, x_size, grid, x_grid, y_grid, 0);
   } else {
     partition_recurse_x(cp, min_x, max_y, max_x - min_x + 1, min_y - max_y + 1, x_size, grid, x_grid, y_grid, 0);

@@ -35,21 +35,21 @@ Canvas::Canvas(std::string fontfile, int width, int height, gdImagePtr img) {
   offset_x = 0;
   offset_y = 0;
   hasParent = true;
-  if(!img) {
+  if (!img) {
     this->img = gdImageCreateTrueColor(width, height);
     hasParent = false;
   }
 }
 
 Canvas::~Canvas() {
-  if(!hasParent) {
+  if (!hasParent) {
     gdImageDestroy(img);
   }
 }
 
 bool Canvas::writeImage(char* filename) {
   FILE* f = fopen(filename, "wb");
-  if(!f) {
+  if (!f) {
     return false;
   }
   gdImagePng(img, f);
@@ -58,7 +58,7 @@ bool Canvas::writeImage(char* filename) {
 }
 
 bool Canvas::writeImage(FILE* f) {
-  if(!f) {
+  if (!f) {
     return false;
   }
   gdImagePng(img, f);
@@ -145,29 +145,29 @@ void Canvas::drawText(const char* s, int x, int y, VAlignment v, HAlignment h, i
 
   assert(!gdImageStringFT(NULL, brect, colour, (char*)fontfile.c_str(), size, angle, 0, 0, buf));
 
-  switch(h) {
+  switch (h) {
   case LEFT:
     x -= brect[UPPERLEFT_X];
     break;
-    
+
   case CENTER:
     x -= (brect[LOWERRIGHT_X] + brect[UPPERLEFT_X]) / 2;
     break;
-    
+
   case RIGHT:
     x -= brect[LOWERRIGHT_X];
     break;
   }
-  
-  switch(v) {
+
+  switch (v) {
   case TOP:
     y -= brect[UPPERRIGHT_Y];
     break;
-    
+
   case MIDDLE:
     y -= (brect[LOWERLEFT_Y] + brect[UPPERRIGHT_Y]) / 2;
     break;
-    
+
   case BOTTOM:
     y -= brect[LOWERLEFT_Y];
     break;
@@ -177,7 +177,7 @@ void Canvas::drawText(const char* s, int x, int y, VAlignment v, HAlignment h, i
 
   assert(!gdImageStringFT(img, brect, colour, (char*)fontfile.c_str(), size, angle, x, y, buf));
   delete[] buf;
-} 
+}
 
 void Canvas::setClip(int x1, int y1, int x2, int y2) {
   gdImageSetClip(img, x1, y1, x2, y2);
@@ -189,7 +189,7 @@ void Canvas::setOffsets(int offset_x, int offset_y) {
 }
 
 void addValue(gdPoint* p, int x, int y, int numpoints) {
-  for(int i = 0; i < numpoints; i++) {
+  for (int i = 0; i < numpoints; i++) {
     p[i].x += x;
     p[i].y += y;
   }
@@ -210,7 +210,7 @@ void Canvas::drawSymbol(enum SYMBOL s, int x, int y) {
   gdPoint dtri[] = { { 5, 9}, {0, 1}, {10, 1} };
   gdPoint dmond[] = { { 5, 1}, {1, 5}, {5, 9}, {9, 5} };
   gdPoint star6[] = { {8, 5}, {10, 2}, {7, 2}, {5, -1}, {4, 2}, {0, 2}, {2, 5}, {0, 9}, {3, 8}, {5, 11}, {7, 8}, {10, 9} };
-  switch(s) {
+  switch (s) {
   case UTRIANGLE:
     addValue(utri, x, y, 3);
     gdImagePolygon(img, utri, 3, colour);
@@ -253,7 +253,7 @@ void Canvas::fillSymbol(enum SYMBOL s, int x, int y) {
   gdPoint dtri[] = { { 5, 9}, {0, 1}, {10, 1} };
   gdPoint dmond[] = { { 5, 1}, {1, 5}, {5, 9}, {9, 5} };
   gdPoint star6[] = { {8, 5}, {10, 2}, {7, 2}, {5, -1}, {4, 2}, {0, 2}, {2, 5}, {0, 9}, {3, 8}, {5, 11}, {7, 8}, {10, 9} };
-  switch(s) {
+  switch (s) {
   case UTRIANGLE:
     addValue(utri, x, y, 3);
     gdImageFilledPolygon(img, utri, 3, colour);

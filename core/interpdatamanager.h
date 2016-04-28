@@ -4,7 +4,7 @@
 #include "datamanager.h"
 
 class InterpRect {
- public:
+public:
   // Does rectangle include some area, and make sense?
   bool isvalid() const;
   double* get_xgrid() const;
@@ -29,47 +29,47 @@ template <typename T> void interpolate_data(const DataGrid<T>& src, DataGrid<T>&
   const double* src_y_center = get_centers_from_grid(src.y_grid().get(), src_ysize);
   const double* dest_x = get_centers_from_grid(dest.x_grid().get(), dest_xsize);
   const double* dest_y = get_centers_from_grid(dest.y_grid().get(), dest_ysize);
-  
-  for(int j = 0; j < dest_ysize; ++j) {
+
+  for (int j = 0; j < dest_ysize; ++j) {
     bool found;
     double y, y1, y2;
     int iy1, iy2;
     // Find y1
     y = dest_y[j];
     found = find_in_range(y, src_ysize - 1, src_y_center, iy1, false);
-    if(!found) continue;
+    if (!found) continue;
     y1 = src_y_center[iy1];
-    
+
     // y2
-    iy2 = iy1+1;
-    if(iy2 >= src_ysize) continue;
+    iy2 = iy1 + 1;
+    if (iy2 >= src_ysize) continue;
     y2 = src_y_center[iy2];
 
-    for(int i = 0; i < dest_xsize; ++i) {
+    for (int i = 0; i < dest_xsize; ++i) {
       double x, x1, x2;
       int ix1, ix2;
-      
+
       // Find x1
       x = dest_x[i];
       found = find_in_range(x, src_xsize - 1, src_x_center, ix1, true);
-      if(!found) continue;
+      if (!found) continue;
       x1 = src_x_center[ix1];
 
       // x2
-      ix2 = ix1+1;
-      if(ix2 >= src_xsize) continue;
+      ix2 = ix1 + 1;
+      if (ix2 >= src_xsize) continue;
       x2 = src_x_center[ix2];
-      
+
       // Do the linear interpolation
       // http://en.wikipedia.org/wiki/Bilinear_interpolation
-      
+
       #define SRC_VALS(x, y)  (src_data[(y) * src_xsize + (x)])
       const double r11 = SRC_VALS(ix1, iy1);
       const double r21 = SRC_VALS(ix2, iy1);
       const double r12 = SRC_VALS(ix1, iy2);
       const double r22 = SRC_VALS(ix2, iy2);
-      if(r11 == missing || r21 == missing || r12 == missing || r22 == missing)
-	continue;
+      if (r11 == missing || r21 == missing || r12 == missing || r22 == missing)
+        continue;
 
       const double r1 = ((x2 - x) / (x2 - x1)) * r11 + ((x - x1) / (x2 - x1)) * r21;
       const double r2 = ((x2 - x) / (x2 - x1)) * r12 + ((x - x1) / (x2 - x1)) * r22;

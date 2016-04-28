@@ -4,7 +4,7 @@
 enum SYMBOL {UTRIANGLE, LTRIANGLE, RTRIANGLE, DTRIANGLE, DIAMOND, STAR6, SQUARE, CIRCLE, NONE};
 
 class LegendToken {
- public:
+public:
   LegendToken(std::string name, int colour, enum SYMBOL sym, bool filled) {
     this->name = name;
     this->colour = colour;

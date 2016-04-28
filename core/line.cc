@@ -20,7 +20,7 @@ Point line_intersect(const Point& p00, const Point& p01, const Point& p10, const
 
   // Check for vertical lines
 
-  if((p00.x - p01.x) == 0) {
+  if ((p00.x - p01.x) == 0) {
     // A is vertical line
     vlA = 1;
     mA = INFINITY;
@@ -28,7 +28,7 @@ Point line_intersect(const Point& p00, const Point& p01, const Point& p10, const
     mA = (p00.y - p01.y) / (p00.x - p01.x);
   }
 
-  if((p10.x - p11.x) == 0) {
+  if ((p10.x - p11.x) == 0) {
     // B is vertical line
     vlB = 1;
     mB = INFINITY;
@@ -37,15 +37,15 @@ Point line_intersect(const Point& p00, const Point& p01, const Point& p10, const
   }
 
   // If parallel or antiparallel...
-  if(mA == mB) {
+  if (mA == mB) {
     return Point(NAN, NAN);
   }
 
-  if(vlA) {
+  if (vlA) {
     // Line A (p00 - p01) is a vertical line
     x = p00.x;
     y = ((p00.x - p11.x) * mB + p11.y);
-  } else if(vlB) {
+  } else if (vlB) {
     // Line B (p10 - p11) is a vertical line
     x = p10.x;
     y = ((p10.x - p01.x) * mA + p01.y);
@@ -65,7 +65,7 @@ Point ls_intersect(const Point& p00, const Point& p01, const Point& p10, const P
 
   // Check for vertical lines
 
-  if((p00.x - p01.x) == 0) {
+  if ((p00.x - p01.x) == 0) {
     // A is vertical line
     vlA = 1;
     mA = INFINITY;
@@ -73,7 +73,7 @@ Point ls_intersect(const Point& p00, const Point& p01, const Point& p10, const P
     mA = (p00.y - p01.y) / (p00.x - p01.x);
   }
 
-  if((p10.x - p11.x) == 0) {
+  if ((p10.x - p11.x) == 0) {
     // B is vertical line
     vlB = 1;
     mB = INFINITY;
@@ -85,11 +85,11 @@ Point ls_intersect(const Point& p00, const Point& p01, const Point& p10, const P
   //mB = clip(mB);
 
   // If parallel or antiparallel...
-  if(mA == mB) {
+  if (mA == mB) {
     return point;
   }
 
-  if(vlA) {
+  if (vlA) {
     //cout << "(" << p00.x << " - " << p11.x << ") = " << (p00.x - p11.x) << endl;
 
     // Line A (p00 - p01) is a vertical line
@@ -97,7 +97,7 @@ Point ls_intersect(const Point& p00, const Point& p01, const Point& p10, const P
     y = ((p00.x - p11.x) * mB + p11.y);
     s = ((y - p00.y) / (p01.y - p00.y));
     t = ((x - p10.x) / (p11.x - p10.x));
-  } else if(vlB) {
+  } else if (vlB) {
     // Line B (p10 - p11) is a vertical line
     x = p10.x;
     y = ((p10.x - p01.x) * mA + p01.y);
@@ -112,7 +112,7 @@ Point ls_intersect(const Point& p00, const Point& p01, const Point& p10, const P
   }
 
   // Check range
-  if((ignore_first_range || (s >= 0 && s <= 1)) && t >= 0 && t <= 1) {
+  if ((ignore_first_range || (s >= 0 && s <= 1)) && t >= 0 && t <= 1) {
     point = Point(x, y);
   }
 
@@ -123,12 +123,12 @@ Point ls_intersect(const Point& p00, const Point& p01, const Point& p10, const P
 // Returns list of points composing bounding box in clockwise order
 Line* get_box_outline(Point topright, Point bottomleft) {
   Line* lines = new Line[QUAD_SIDES];
-  
+
   lines[0] = Line(Point(bottomleft.x, topright.y), Point(topright.x, topright.y), true);
   lines[1] = Line(Point(topright.x, topright.y), Point(topright.x, bottomleft.y), true);
   lines[2] = Line(Point(topright.x, bottomleft.y), Point(bottomleft.x, bottomleft.y), true);
   lines[3] = Line(Point(bottomleft.x, bottomleft.y), Point(bottomleft.x, topright.y), true);
-  
+
   return lines;
 }
 

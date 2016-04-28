@@ -21,10 +21,10 @@ public:
   }
 
   ~Datafile() {
-    if(data) {
+    if (data) {
       delete[] data;
     }
-    if(slmask) {
+    if (slmask) {
       delete[] slmask;
     }
   }
@@ -37,39 +37,39 @@ public:
 
     // Open data file
     infile = fopen(filename, "r");
-  
-    if(!infile) {
+
+    if (!infile) {
       return false;
     }
-    if(hasHeader) {
-      if(fgets(buf, 1024, infile)) {
-	headerlen = strlen(buf);
-	ptr = buf;
-	
-	// Assume first line is parameters -- valid.
-	for(i = 0; i < 4; i++) {
-	  ptr = seektoword(ptr);
-	}
-	
-	// At this point, we're at the # of cols
-	cols = readint(ptr, buf2);
-	
-	// Now seek to the next non-space
-	ptr = seektoword(ptr);
-	
-	// Now load in # of rows
-	rows = readint(ptr, buf);
-	
-	line_length = cols * VALUE_LENGTH + 3;
-	
+    if (hasHeader) {
+      if (fgets(buf, 1024, infile)) {
+        headerlen = strlen(buf);
+        ptr = buf;
+
+        // Assume first line is parameters -- valid.
+        for (i = 0; i < 4; i++) {
+          ptr = seektoword(ptr);
+        }
+
+        // At this point, we're at the # of cols
+        cols = readint(ptr, buf2);
+
+        // Now seek to the next non-space
+        ptr = seektoword(ptr);
+
+        // Now load in # of rows
+        rows = readint(ptr, buf);
+
+        line_length = cols * VALUE_LENGTH + 3;
+
       } else {
-	return false;
+        return false;
       }
     }
-    if(!data) {
+    if (!data) {
       data = new double[rows * cols * TIMESOFYEAR];
     }
-    if(!slmask) {
+    if (!slmask) {
       slmask = new int[rows * cols * TIMESOFYEAR];
     }
     return true;
@@ -87,7 +87,7 @@ public:
     delete[] dataline;
     return true;
   }
-  
+
   bool loadLats() {
     char * dataline;
 
@@ -112,13 +112,13 @@ public:
     double* dataptr = data;
 
     dataline = new char[line_length];
-    for(timeofyear = 0; timeofyear < TIMESOFYEAR; timeofyear++) {
+    for (timeofyear = 0; timeofyear < TIMESOFYEAR; timeofyear++) {
       // Seek to the data block we want in the data file
       // Calculate offset to beginning of data
       i = (line_length - 1) * rows * timeofyear + (timeofyear + 1)  * headerlen;
       // Seek to offset (not relative)
-      if(fseek(infile, i, SEEK_SET) == -1) {
-	return false;
+      if (fseek(infile, i, SEEK_SET) == -1) {
+        return false;
       }
       load_grid(infile, rows, cols, dataline, line_length, dataptr, VALUE_LENGTH);
       dataptr += (rows * cols);
@@ -158,7 +158,7 @@ int main(int argc, char** argv) {
 
   f = new NcFile(argv[1], NcFile::Replace);
 
-  while(fgets(buf, 1024, stdin)) {
+  while (fgets(buf, 1024, stdin)) {
     c = strchr(buf, '\n');
     *c = '\0';
     d.filename = buf;
@@ -166,51 +166,51 @@ int main(int argc, char** argv) {
     c = strrchr(buf2, '_');
     *c = '\0';
     c = strchr(buf2, '_') + 1;
-    if(strstr(d.filename, "slmask")) {
+    if (strstr(d.filename, "slmask")) {
       //printf("Load slmask\n");
-      if(!d.openFile(false)) {
-	printf("Missing file %s\n", d.filename);
+      if (!d.openFile(false)) {
+        printf("Missing file %s\n", d.filename);
       } else {
-	NcVar* var1 = f->add_var(c, ncInt, rows, cols);
-	d.loadSlmask();
-	var1->put(d.slmask, d.rows, d.cols);
-	d.closeFile();
+        NcVar* var1 = f->add_var(c, ncInt, rows, cols);
+        d.loadSlmask();
+        var1->put(d.slmask, d.rows, d.cols);
+        d.closeFile();
       }
-    } else if(strstr(d.filename, "lats")) {
+    } else if (strstr(d.filename, "lats")) {
       //printf("Load lats\n");
-      if(!d.openFile(false)) {
-	printf("Missing file %s\n", d.filename);
+      if (!d.openFile(false)) {
+        printf("Missing file %s\n", d.filename);
       } else {
-	NcVar* var1 = f->add_var(c, ncDouble, rows);
-	d.loadLats();
-	var1->put(d.data, d.rows);
-	d.closeFile();
+        NcVar* var1 = f->add_var(c, ncDouble, rows);
+        d.loadLats();
+        var1->put(d.data, d.rows);
+        d.closeFile();
       }
-    } else if(strstr(d.filename, "longs")) {
+    } else if (strstr(d.filename, "longs")) {
       //printf("Load longs\n");
-      if(!d.openFile(false)) {
-	printf("Missing file %s\n", d.filename);
+      if (!d.openFile(false)) {
+        printf("Missing file %s\n", d.filename);
       } else {
-	NcVar* var1 = f->add_var(c, ncDouble, cols);
-	d.loadLongs();
-	var1->put(d.data, d.cols);
-	d.closeFile();
+        NcVar* var1 = f->add_var(c, ncDouble, cols);
+        d.loadLongs();
+        var1->put(d.data, d.cols);
+        d.closeFile();
       }
     } else {
       //printf("Load datafile\n");
-      if(!d.openFile()) {
-	printf("Missing file %s\n", d.filename);
+      if (!d.openFile()) {
+        printf("Missing file %s\n", d.filename);
       } else {
-	if(firstRun) {
-	  timesofyear = f->add_dim("timesofyear", TIMESOFYEAR);
-	  rows = f->add_dim("rows", d.rows);
-	  cols = f->add_dim("columns", d.cols);
-	  firstRun = 0;
-	}
-	NcVar* var1 = f->add_var(c, ncDouble, timesofyear, rows, cols);
-	d.loadData();
-	var1->put(d.data, TIMESOFYEAR, d.rows, d.cols);
-	d.closeFile();
+        if (firstRun) {
+          timesofyear = f->add_dim("timesofyear", TIMESOFYEAR);
+          rows = f->add_dim("rows", d.rows);
+          cols = f->add_dim("columns", d.cols);
+          firstRun = 0;
+        }
+        NcVar* var1 = f->add_var(c, ncDouble, timesofyear, rows, cols);
+        d.loadData();
+        var1->put(d.data, TIMESOFYEAR, d.rows, d.cols);
+        d.closeFile();
       }
     }
     f->sync();

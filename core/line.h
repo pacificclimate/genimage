@@ -29,18 +29,18 @@ public:
 
   Line() { used = false; };
 
-  Line(const Point& ifrom, const Point& ito, bool calc_slope = false, bool used = false) { 
+  Line(const Point& ifrom, const Point& ito, bool calc_slope = false, bool used = false) {
     this->used = used;
-    from.x = ifrom.x; 
-    from.y = ifrom.y; 
-    to.x = ito.x; 
-    to.y = ito.y; 
+    from.x = ifrom.x;
+    from.y = ifrom.y;
+    to.x = ito.x;
+    to.y = ito.y;
     inside = -1;
-    if(calc_slope) {
-      if(to.x == from.x) {
-	slope = INFINITY * sign(to.y - from.y);
+    if (calc_slope) {
+      if (to.x == from.x) {
+        slope = INFINITY * sign(to.y - from.y);
       } else {
-	slope = (to.y - from.y) / (to.x - from.x);
+        slope = (to.y - from.y) / (to.x - from.x);
       }
     }
   }

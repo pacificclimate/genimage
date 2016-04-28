@@ -70,7 +70,7 @@
 
 #define JPEG_QUALITY 90
 
-enum ANOM_TYPE{DEFAULT=0, ANOMALY, ABSOLUTE};
+enum ANOM_TYPE {DEFAULT = 0, ANOMALY, ABSOLUTE};
 
 enum PLOT_TYPES {
   TYPE_MAP = 0, // Use this to plot a map
@@ -96,14 +96,15 @@ enum PLOT_TYPES {
   TYPE_BANDS_TIMESLICE = 20,
   TYPE_BANDS_TIMESLICE_HIST = 21,
   TYPE_SCENARIO_SET_METADATA = 22,
-  TYPE_INVALID };
+  TYPE_INVALID
+};
 
 inline int nearest_offset(int size, double* data, double value) {
   double old_diff = INFINITY;
   int i;
-  for(i = 0; i < size; i++) {
+  for (i = 0; i < size; i++) {
     const double diff = fabs(data[i] - value);
-    if(old_diff < diff) {
+    if (old_diff < diff) {
       break;
     }
     old_diff = diff;
@@ -129,59 +130,59 @@ inline int lattoy(int max_y, double off_lat, double min_lat, double max_lat, dou
 
 inline void hline(int** img, int x1, int x2, int y, int /*width*/, int colour) {
   int* imgptr = img[y];
-  for(; x1 < x2; x1++) {
+  for (; x1 < x2; x1++) {
     imgptr[x1] = colour;
   }
 }
 
 inline void vline(int** img, int x, int y1, int y2, int /*width*/, int colour) {
-  for(; y1 < y2; y1++) {
+  for (; y1 < y2; y1++) {
     img[y1][x] = colour;
   }
 }
 
 inline void seektoword(FILE * in) {
   char c;
-  while(!isspace(c = fgetc(in))) ;
-  while(isspace(c = fgetc(in))) ;
+  while (!isspace(c = fgetc(in))) ;
+  while (isspace(c = fgetc(in))) ;
   ungetc(c, in);
 }
 
 inline char* seektoword(char * in) {
-    while(!isspace(*(in++)) && *in) ;
-    while(isspace(*(in++)) && *in) ;
-    in--;
-    return in;
+  while (!isspace(*(in++)) && *in) ;
+  while (isspace(*(in++)) && *in) ;
+  in--;
+  return in;
 }
 
 inline int readint(FILE * in, char * buf) {
-    char * ptr = buf;
-    while(!isspace(*(ptr++) = fgetc(in))) ;
-    *ptr = '\0';
-    return atoi(buf);
+  char * ptr = buf;
+  while (!isspace(*(ptr++) = fgetc(in))) ;
+  *ptr = '\0';
+  return atoi(buf);
 }
 
 inline int readint(char *in, char * buf) {
-    char * ptr = buf;
-    while(!isspace(*(ptr++) = *(in++)) && *in) ;
-    *ptr = '\0';
-    return atoi(buf);
+  char * ptr = buf;
+  while (!isspace(*(ptr++) = *(in++)) && *in) ;
+  *ptr = '\0';
+  return atoi(buf);
 }
 
 inline void seektonextline(FILE * in) {
-  while('\n' != fgetc(in)) ;
+  while ('\n' != fgetc(in)) ;
 }
 
 inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width) {
   char* ptr;
-  for(int y = 0; y < rows; y++) {
-    if(fgets(dataline, dl_length, infile)) {
+  for (int y = 0; y < rows; y++) {
+    if (fgets(dataline, dl_length, infile)) {
       ptr = dataline + 1;
-      for(int x = 0; x < cols; x++) {
-	*(ptr + (data_width - 1)) = '\0';
-	data[y * cols + x] = atof(ptr);
-	ptr += data_width;
-      }	  
+      for (int x = 0; x < cols; x++) {
+        *(ptr + (data_width - 1)) = '\0';
+        data[y * cols + x] = atof(ptr);
+        ptr += data_width;
+      }
     }
   }
   return 0;
@@ -189,14 +190,14 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
 
 inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, int* data, int data_width) {
   char* ptr;
-  for(int y = 0; y < rows; y++) {
-    if(fgets(dataline, dl_length, infile)) {
+  for (int y = 0; y < rows; y++) {
+    if (fgets(dataline, dl_length, infile)) {
       ptr = dataline + 1;
-      for(int x = 0; x < cols; x++) {
-	*(ptr + (data_width - 1)) = '\0';
-	data[y * cols + x] = atoi(ptr);
-	ptr += data_width;
-      }	  
+      for (int x = 0; x < cols; x++) {
+        *(ptr + (data_width - 1)) = '\0';
+        data[y * cols + x] = atoi(ptr);
+        ptr += data_width;
+      }
     }
   }
   return 0;
@@ -204,15 +205,15 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
 
 inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width, Range* drange) {
   char* ptr;
-  for(int y = 0; y < rows; y++) {
-    if(fgets(dataline, dl_length, infile)) {
+  for (int y = 0; y < rows; y++) {
+    if (fgets(dataline, dl_length, infile)) {
       ptr = dataline + 1;
-      for(int x = 0; x < cols; x++) {
-	*(ptr + (data_width - 1)) = '\0';
-	data[y * cols + x] = atof(ptr);
-	drange->add(data[y * cols + x]);
-	ptr += data_width;
-      }	  
+      for (int x = 0; x < cols; x++) {
+        *(ptr + (data_width - 1)) = '\0';
+        data[y * cols + x] = atof(ptr);
+        drange->add(data[y * cols + x]);
+        ptr += data_width;
+      }
     }
   }
   return 0;
@@ -220,17 +221,17 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
 
 inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_length, double* data, int data_width, Range* drange, int* slmask, int allow_value) {
   char* ptr;
-  for(int y = 0; y < rows; y++) {
-    if(fgets(dataline, dl_length, infile)) {
+  for (int y = 0; y < rows; y++) {
+    if (fgets(dataline, dl_length, infile)) {
       ptr = dataline + 1;
-      for(int x = 0; x < cols; x++) {
-	*(ptr + (data_width - 1)) = '\0';
-	data[y * cols + x] = atof(ptr);
-	if(slmask[y * cols + x] == allow_value) {
-	  drange->add(data[y * cols + x]);
-	}
-	ptr += data_width;
-      }	  
+      for (int x = 0; x < cols; x++) {
+        *(ptr + (data_width - 1)) = '\0';
+        data[y * cols + x] = atof(ptr);
+        if (slmask[y * cols + x] == allow_value) {
+          drange->add(data[y * cols + x]);
+        }
+        ptr += data_width;
+      }
     }
   }
   return 0;
@@ -238,11 +239,11 @@ inline int load_grid(FILE *infile, int rows, int cols, char* dataline, int dl_le
 
 inline int parse_data_point(const char* datapt, Point& pt) {
   // "lon:lat:selected"
-  if(datapt && strchr(datapt, ':')) {
+  if (datapt && strchr(datapt, ':')) {
     char* const dp_thing = new char[strlen(datapt) + 1];
     char* dp = strcpy(dp_thing, datapt);
     char* nxt = strchr(dp, ':');
-    if(nxt && *nxt) {
+    if (nxt && *nxt) {
       *nxt = '\0';
       nxt++;
     } else {
@@ -253,7 +254,7 @@ inline int parse_data_point(const char* datapt, Point& pt) {
     dp = nxt;
 
     nxt = strchr(dp, ':');
-    if(nxt && *nxt) {
+    if (nxt && *nxt) {
       *nxt = '\0';
       nxt++;
     } else {

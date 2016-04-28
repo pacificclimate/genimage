@@ -8,7 +8,7 @@
 
 #define POLY_SIZE 11
 
-enum STYLES{DASHED};
+enum STYLES {DASHED};
 
 // BIG WORK SAVER: gdImageSetClip
 // Look into it... could clean up code a -lot-
@@ -56,7 +56,7 @@ public:
   void setStyle(enum STYLES s) {
     int grey = 0x00808080;
     const int dashed[] = { gdTransparent, gdTransparent, grey, grey, gdTransparent, gdTransparent };
-    switch(s) {
+    switch (s) {
     case DASHED:
       gdImageSetStyle(img, (int*)dashed, 6);
       break;
@@ -68,7 +68,7 @@ public:
 
   void drawPoly(gdPoint* points, int npoints, int colour);
   void fillPoly(gdPoint* points, int npoints, int colour);
-  
+
   /* Image to draw on */
   gdImagePtr img;
   bool hasParent;
